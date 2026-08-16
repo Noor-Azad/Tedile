@@ -1,0 +1,339 @@
+/* Dashboard Page Styles */
+.dashboard {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.dashboard-header {
+  background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+}
+
+.dashboard-header p {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.tab:hover {
+  background-color: #e0e0e0;
+}
+
+.tab.active {
+  background-color: #1d3557;
+  color: white;
+}
+
+.dashboard-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-section h2 {
+  color: #1d3557;
+  margin-bottom: 1rem;
+}
+
+.rating-box {
+  background: linear-gradient(135deg, #1d3557 0%, #457b9d 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  gap: 2rem;
+}
+
+.rating-stat {
+  text-align: center;
+}
+
+.rating-stat h3 {
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.rating-stat p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-group label {
+  font-weight: bold;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #457b9d;
+  box-shadow: 0 0 0 2px rgba(69, 123, 157, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.submit-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #1d3557;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  max-width: 200px;
+}
+
+.submit-btn:hover {
+  background-color: #457b9d;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bookings-section,
+.reviews-section,
+.jobs-section,
+.offers-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bookings-section h2,
+.reviews-section h2,
+.jobs-section h2,
+.offers-section h2 {
+  color: #1d3557;
+  margin-bottom: 1rem;
+}
+
+.bookings-section p,
+.reviews-section p,
+.jobs-section p,
+.offers-section p {
+  color: #666;
+  font-size: 1.05rem;
+}
+
+.bookings-section a,
+.reviews-section a,
+.jobs-section a,
+.offers-section a {
+  color: #1d3557;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.bookings-section a:hover,
+.reviews-section a:hover,
+.jobs-section a:hover,
+.offers-section a:hover {
+  color: #e63946;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 4px;
+  text-align: center;
+  border-left: 3px solid #1d3557;
+}
+
+.stat-card p {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.stat-card h3 {
+  color: #1d3557;
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-card {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 3px solid #e63946;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.reviewer-name {
+  font-weight: bold;
+  margin: 0;
+}
+
+.review-title {
+  font-weight: bold;
+  color: #1d3557;
+  margin: 0.5rem 0;
+}
+
+.review-comment {
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #999;
+  margin: 0;
+}
+
+.offers-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.offer-card {
+  background: #fff3cd;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ffc107;
+}
+
+.offer-card h4 {
+  color: #1d3557;
+  margin-top: 0;
+}
+
+.offer-card p {
+  color: #333;
+  margin: 0.5rem 0;
+}
+
+.discount {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #e63946;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #1d3557;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background-color 0.3s;
+}
+
+.btn:hover {
+  background-color: #457b9d;
+}
+
+@media (max-width: 768px) {
+  .dashboard-tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    width: 100%;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rating-box {
+    flex-direction: column;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

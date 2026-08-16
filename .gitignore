@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+.pytest_cache/
+**/__pycache__/
+**/instance/*.db
+**/uploads/
+
+# Local workspace artifacts
+Library/
+instance/
+.tools/

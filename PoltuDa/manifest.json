@@ -1,0 +1,9 @@
+{
+  "name": "PoltuDa.in",
+  "short_name": "PoltuDa",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#1d3557",
+  "description": "Find trusted local service providers."
+}
