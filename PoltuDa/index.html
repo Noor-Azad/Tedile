@@ -409,8 +409,33 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            nav .container {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                padding: 0.75rem 16px;
+            }
+
+            .logo {
+                flex: 1 1 auto;
+                font-size: 1.25rem;
+            }
+
+            .auth-section {
+                flex: 0 0 auto;
+                gap: 0.5rem;
+            }
+
+            .auth-section .btn {
+                padding: 0.45rem 0.65rem;
+                font-size: 0.9rem;
+            }
+
             .nav-links {
-                gap: 1rem;
+                order: 3;
+                flex: 1 0 100%;
+                justify-content: center;
+                gap: 1.5rem;
+                padding-top: 0.25rem;
                 font-size: 0.9rem;
             }
 

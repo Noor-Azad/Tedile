@@ -33,6 +33,24 @@
   padding: 0;
 }
 
+.menu-toggle {
+  display: none;
+  width: 44px;
+  height: 40px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.menu-toggle span {
+  display: block;
+  height: 2px;
+  margin: 5px 0;
+  background: white;
+}
+
 .nav-item {
   margin: 0;
 }
@@ -72,11 +90,48 @@
 
 @media (max-width: 768px) {
   .navbar-container {
+    position: relative;
     padding: 0 1rem;
   }
 
+  .navbar-logo {
+    font-size: 1.15rem;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+
   .nav-menu {
-    gap: 1rem;
-    font-size: 0.9rem;
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 1rem 1rem;
+    background-color: #1d3557;
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.16);
+  }
+
+  .nav-menu.is-open {
+    display: flex;
+  }
+
+  .nav-item {
+    width: 100%;
+  }
+
+  .nav-link,
+  .nav-user {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .nav-link.signup {
+    margin-top: 0.25rem;
+    text-align: center;
   }
 }

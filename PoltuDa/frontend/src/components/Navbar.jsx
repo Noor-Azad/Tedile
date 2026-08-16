@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
 
 function Navbar({ user, isAuthenticated, onLogout }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const handleLogout = () => {
     onLogout();
+    setIsMenuOpen(false);
   };
 
   return (
@@ -14,14 +17,26 @@ function Navbar({ user, isAuthenticated, onLogout }) {
           🏠 PoltuDa.in
         </Link>
 
-        <ul className="nav-menu">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        <ul className={`nav-menu${isMenuOpen ? ' is-open' : ''}`}>
           <li className="nav-item">
-            <Link to="/" className="nav-link">
+            <Link to="/" className="nav-link" onClick={() => setIsMenuOpen(false)}>
               Home
             </Link>
           </li>
           <li className="nav-item">
-            <Link to="/services" className="nav-link">
+            <Link to="/services" className="nav-link" onClick={() => setIsMenuOpen(false)}>
               Services
             </Link>
           </li>
@@ -33,14 +48,14 @@ function Navbar({ user, isAuthenticated, onLogout }) {
               </li>
               {user?.user_type === 'customer' && (
                 <li className="nav-item">
-                  <Link to="/dashboard" className="nav-link">
+                  <Link to="/dashboard" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                     Dashboard
                   </Link>
                 </li>
               )}
               {user?.user_type === 'provider' && (
                 <li className="nav-item">
-                  <Link to="/provider-dashboard" className="nav-link">
+                  <Link to="/provider-dashboard" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                     Dashboard
                   </Link>
                 </li>
@@ -54,12 +69,12 @@ function Navbar({ user, isAuthenticated, onLogout }) {
           ) : (
             <>
               <li className="nav-item">
-                <Link to="/login" className="nav-link">
+                <Link to="/login" className="nav-link" onClick={() => setIsMenuOpen(false)}>
                   Login
                 </Link>
               </li>
               <li className="nav-item">
-                <Link to="/register" className="nav-link signup">
+                <Link to="/register" className="nav-link signup" onClick={() => setIsMenuOpen(false)}>
                   Sign Up
                 </Link>
               </li>
