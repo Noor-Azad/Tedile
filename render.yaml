@@ -6,6 +6,8 @@ services:
     startCommand: gunicorn --chdir PoltuDa/backend app:app
     plan: free
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: FLASK_ENV
         value: production
       - key: JWT_SECRET_KEY
