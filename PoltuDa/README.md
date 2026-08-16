@@ -106,6 +106,24 @@ the service is redeployed. This option is suitable for testing only.
 On Android, use the browser menu and choose **Add to Home screen**. On iPhone,
 open the URL in Safari, tap **Share**, then choose **Add to Home Screen**.
 
+## Android and iOS Builds
+
+The `mobile` directory contains a Capacitor wrapper connected to the deployed
+web app. From that directory, install Node.js dependencies and add the native
+platforms:
+
+```bash
+cd mobile
+npm install
+npx cap add android
+npx cap add ios
+npx cap sync
+```
+
+Open Android Studio with `npm run android:open` to build an APK. Open Xcode
+with `npm run ios:open` to build and sign the iOS app. Android testing can use
+an unsigned/debug APK; iOS device installation requires Apple signing.
+
 ## 📖 For Detailed Development Process
 
 See [POLTUDA_DEVELOPMENT_PLAN.md](POLTUDA_DEVELOPMENT_PLAN.md) for:

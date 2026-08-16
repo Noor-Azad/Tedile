@@ -1,0 +1,24 @@
+{
+  "name": "poltuda-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PoltuDa Android and iOS wrapper",
+  "scripts": {
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "cap:sync": "npx cap sync",
+    "android:open": "npx cap open android",
+    "ios:open": "npx cap open ios",
+    "android:run": "npx cap run android",
+    "ios:run": "npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/ios": "^7.4.0",
+    "typescript": "^7.0.2"
+  }
+}

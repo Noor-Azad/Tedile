@@ -6,6 +6,9 @@ Tedile is the parent repository for multiple projects.
 
 - [PoltuDa](PoltuDa/README.md): local service provider marketplace
 
+PoltuDa also includes a Capacitor mobile wrapper in `PoltuDa/mobile` for
+Android APK builds and iOS Xcode builds.
+
 Additional applications can be added as sibling directories under this
 repository without changing the existing projects.
 
