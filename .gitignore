@@ -14,6 +14,8 @@ venv/
 **/android/app/build/
 **/ios/Pods/
 **/ios/build/
+**/.idea/
+**/dist/
 
 # Local workspace artifacts
 Library/
