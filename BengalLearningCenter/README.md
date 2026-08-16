@@ -56,3 +56,50 @@ Then open:
 ## Notes
 
 This is an initial working school management starter app. It uses sample data so the UI and workflows can be reviewed quickly before connecting to a real database or authentication system.
+
+## Production architecture
+
+For a real deployment, keep file storage separate from relational data:
+
+- PostgreSQL stores structured information such as student records, attendance, fees, and file metadata.
+- S3 stores the actual uploaded files such as student photos, receipts, notices, and PDFs.
+
+Example:
+
+```text
+Student row:
+  id = 125
+  name = "Ayesha Rahman"
+  photo_url = "https://bengal-learning-center.s3.ap-south-1.amazonaws.com/students/125/profile.jpg"
+```
+
+This pattern means:
+
+- PostgreSQL = structured data
+- S3 = uploaded files
+
+Recommended Render deployment configuration:
+
+```env
+SECRET_KEY=your-long-random-secret
+FLASK_DEBUG=false
+DATABASE_URL=postgresql://user:password@host:5432/bengal_learning_center
+AWS_REGION=ap-south-1
+S3_BUCKET_NAME=bengal-learning-center
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+```
+
+Render can provision a PostgreSQL database and attach it as an environment variable automatically. The app then uses the `DATABASE_URL` for schema and metadata storage while S3 handles uploaded files.
+
+Recommended folders for S3:
+
+```text
+students/
+receipts/
+notices/
+documents/
+backups/
+```
+
+The app should never store large uploaded files directly in the Flask server folder. Instead, the server should upload the file to S3 and save only the file reference or URL in the database.
