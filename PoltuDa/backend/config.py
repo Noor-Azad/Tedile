@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+INSTANCE_DIR = os.path.join(os.path.dirname(__file__), 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+
 
 class Config:
     """Base configuration"""
@@ -19,7 +22,7 @@ class Config:
     # SQLAlchemy
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URL',
-        'sqlite:///' + os.path.join(os.path.dirname(__file__), 'instance', 'poltuda.db')
+        'sqlite:///' + os.path.join(INSTANCE_DIR, 'poltuda.db')
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
