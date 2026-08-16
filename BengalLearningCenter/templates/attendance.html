@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bengal Learning Center Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <style>
+      .page-shell {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .page-main {
+        flex: 1;
+        padding: 28px;
+      }
+
+      .attendance-panel {
+        background: white;
+        border-radius: 18px;
+        box-shadow: 0 14px 36px rgba(16, 58, 99, 0.12);
+        padding: 20px;
+      }
+
+      .attendance-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .attendance-table th,
+      .attendance-table td {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid #dfe8f5;
+        vertical-align: middle;
+      }
+
+      .attendance-table th {
+        color: #5a6476;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .self-mark-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+        padding: 14px 16px;
+        background: #f4f8ff;
+        border: 1px solid #dfe8f5;
+        border-radius: 12px;
+      }
+
+      .self-mark-box form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .self-mark-box select {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #dfe8f5;
+      }
+
+      @media (max-width: 900px) {
+        .page-shell {
+          display: block;
+        }
+
+        .page-main {
+          padding: 20px 14px 30px;
+        }
+
+        .attendance-table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">B</div>
+          <div class="brand-text">
+            <h1>Bengal Learning Center</h1>
+            <small>{{ role }} Portal</small>
+          </div>
+        </div>
+
+        <nav class="nav-links">
+          <a href="{{ url_for('dashboard') }}" class="nav-link">Overview</a>
+          <a href="{{ url_for('attendance_page') }}" class="nav-link active">Attendance</a>
+          <a href="#" class="nav-link">Notices</a>
+          <a href="#" class="nav-link">Finance</a>
+        </nav>
+
+        <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+      </aside>
+
+      <main class="page-main">
+        <div class="attendance-panel">
+          <div class="attendance-header">
+            <div>
+              <p class="eyebrow">School attendance</p>
+              <h2>{{ role }} Attendance</h2>
+            </div>
+            <div class="user-badge">{{ user.name }}</div>
+          </div>
+
+          {% if role == 'Teacher' and can_mark_self %}
+          <div class="self-mark-box">
+            <strong>Mark your attendance</strong>
+            <form method="post" action="{{ url_for('mark_self_attendance') }}">
+              <select name="status">
+                <option value="Present">Present</option>
+                <option value="Late">Late</option>
+                <option value="Absent">Absent</option>
+              </select>
+              <button type="submit" class="primary-btn">Save</button>
+            </form>
+          </div>
+          {% endif %}
+
+          {% if role == 'Admin' %}
+          {% set pending_teachers = records | selectattr('role', 'equalto', 'Teacher') | selectattr('approved', 'equalto', false) | list %}
+          {% if pending_teachers %}
+          <div class="self-mark-box">
+            <strong>{{ pending_teachers | length }} teacher submission(s) awaiting approval</strong>
+            <form method="post" action="{{ url_for('approve_teacher_attendance') }}">
+              <button type="submit" class="primary-btn">Approve all teacher attendance</button>
+            </form>
+          </div>
+          {% endif %}
+          {% endif %}
+
+          <div class="self-mark-box" style="margin-bottom: 20px;">
+            <strong>Week view</strong>
+            <form method="get" action="{{ url_for('attendance_page') }}" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <label for="week-date" style="font-weight:700; color:#14213d;">Choose week</label>
+              <input id="week-date" type="date" name="date" value="{{ selected_date }}" />
+              <button type="submit" class="primary-btn">Apply</button>
+            </form>
+          </div>
+
+          <div class="panel-header" style="margin-bottom: 10px;">
+            <h3>Weekly Attendance Sheet</h3>
+            <span>{{ week_dates[0].strftime('%b %d') }} - {{ week_dates[-1].strftime('%b %d, %Y') }}</span>
+          </div>
+
+          <table class="attendance-table" style="overflow-x:auto; display:block;">
+            <thead>
+              <tr>
+                <th style="min-width:180px;">Name</th>
+                {% for day in week_dates %}
+                <th style="min-width:130px;">{{ day.strftime('%a') }}<br><small>{{ day.strftime('%d %b') }}</small></th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% if role == 'Parent' %}
+                {% for row in week_rows %}
+                <tr>
+                  <td><strong>{{ row.name }}</strong><br><small>{{ row.role }}</small></td>
+                  {% for day in row.days %}
+                  <td>
+                    <div><strong>{{ day.status }}</strong></div>
+                    <small>{{ day.time }}</small>
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              {% else %}
+                {% for row in week_rows %}
+                <tr>
+                  <td><strong>{{ row.name }}</strong><br><small>{{ row.role }}</small></td>
+                  {% for day in row.days %}
+                  <td>
+                    <div><span class="badge {{ day.status|replace(' ', '')|lower }}">{{ day.status }}</span></div>
+                    <small>{{ day.time }}</small>
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

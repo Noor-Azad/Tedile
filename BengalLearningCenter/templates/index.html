@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bengal Learning Center Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="auth-body">
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="brand-block">
+          <div class="brand-mark">B</div>
+          <div>
+            <span class="eyebrow">BENGAL LEARNING CENTER</span>
+            <h1>School Portal</h1>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('login') }}" class="auth-form">
+          <label class="field-label">Login as</label>
+          <div class="role-grid">
+            <label class="role-option">
+              <input type="radio" name="role" value="Admin" checked />
+              <span>Admin</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="role" value="Teacher" />
+              <span>Teacher</span>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="role" value="Parent" />
+              <span>Parent</span>
+            </label>
+          </div>
+
+          <label class="field-label" for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="admin@bengallearningcenter.com" required />
+
+          <label class="field-label" for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Enter password" required />
+
+          {% if error %}
+          <div class="error-box">{{ error }}</div>
+          {% endif %}
+
+          <button type="submit" class="primary-btn auth-btn">Login</button>
+
+          <div class="demo-box">
+            <strong>Demo Accounts</strong>
+            <p>Admin: admin@bengallearningcenter.com / admin123</p>
+            <p>Teacher: teacher@bengallearningcenter.com / teacher123</p>
+            <p>Parent: parent@bengallearningcenter.com / parent123</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

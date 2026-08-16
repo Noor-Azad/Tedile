@@ -2,92 +2,59 @@
 Authentication routes
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from models import db, User, Provider
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+
+try:
+    from .extensions import db, limiter
+    from .models import User
+    from .services.auth_service import AuthService
+except ImportError:  # pragma: no cover - fallback for script execution
+    from extensions import db, limiter
+    from models import User
+    from services.auth_service import AuthService
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per minute")
 def register():
     """Register a new user"""
-    data = request.get_json()
-    
-    # Validate required fields
-    required_fields = ['email', 'password', 'first_name', 'last_name', 'phone', 'user_type']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Check if user already exists
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Email already registered'}), 409
-    
-    # Validate user_type
-    if data['user_type'] not in ['customer', 'provider']:
-        return jsonify({'error': 'Invalid user_type. Must be "customer" or "provider"'}), 400
-    
-    # Create new user
-    user = User(
-        email=data['email'],
-        first_name=data['first_name'],
-        last_name=data['last_name'],
-        phone=data['phone'],
-        user_type=data['user_type'],
-        city=data.get('city'),
-        district=data.get('district'),
-        area=data.get('area'),
-    )
-    user.set_password(data['password'])
-    
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid JSON payload'}), 400
+
     try:
-        db.session.add(user)
-        db.session.commit()
-        
-        # If provider, create provider profile
-        if data['user_type'] == 'provider' and 'service_id' in data:
-            provider = Provider(
-                user_id=user.id,
-                service_id=data['service_id'],
-                experience_years=data.get('experience_years', 0),
-            )
-            db.session.add(provider)
-            db.session.commit()
-        
-        return jsonify({
-            'message': 'User registered successfully',
-            'user': user.to_dict()
-        }), 201
-    
-    except Exception as e:
+        user = AuthService.register(data)
+        return jsonify({'message': 'User registered successfully', 'user': user.to_dict()}), 201
+    except ValueError as exc:
+        code = 409 if 'already registered' in str(exc).lower() else 400
+        return jsonify({'error': str(exc)}), code
+    except Exception as exc:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Registration failed'}), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def login():
     """Login user and return JWT token"""
-    data = request.get_json()
-    
-    if not data.get('email') or not data.get('password'):
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid JSON payload'}), 400
+
+    email = (data.get('email') or '').strip()
+    password = data.get('password')
+    if not email or not password:
         return jsonify({'error': 'Email and password are required'}), 400
-    
-    user = User.query.filter_by(email=data['email']).first()
-    
-    if not user or not user.check_password(data['password']):
-        return jsonify({'error': 'Invalid email or password'}), 401
-    
-    if not user.is_active:
-        return jsonify({'error': 'User account is inactive'}), 403
-    
-    # Create JWT token
-    access_token = create_access_token(identity=user.id)
-    
-    return jsonify({
-        'message': 'Login successful',
-        'access_token': access_token,
-        'user': user.to_dict()
-    }), 200
+
+    try:
+        result = AuthService.login(email, password)
+        return jsonify({'message': 'Login successful', **result}), 200
+    except (ValueError, PermissionError) as exc:
+        status_code = 403 if 'inactive' in str(exc).lower() else 401
+        return jsonify({'error': str(exc)}), status_code
 
 
 @auth_bp.route('/me', methods=['GET'])
@@ -95,7 +62,7 @@ def login():
 def get_current_user():
     """Get current authenticated user"""
     user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -114,29 +81,23 @@ def get_current_user():
 def update_profile():
     """Update user profile"""
     user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    
+    user = db.session.get(User, user_id)
+
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    data = request.get_json()
-    
-    # Update allowed fields
-    allowed_fields = ['first_name', 'last_name', 'phone', 'bio', 'city', 'district', 'area', 'latitude', 'longitude']
-    for field in allowed_fields:
-        if field in data:
-            setattr(user, field, data[field])
-    
+
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid JSON payload'}), 400
+
     try:
-        user.updated_at = datetime.utcnow()
-        db.session.commit()
-        return jsonify({
-            'message': 'Profile updated successfully',
-            'user': user.to_dict()
-        }), 200
-    except Exception as e:
+        updated_user = AuthService.update_profile(user, data)
+        return jsonify({'message': 'Profile updated successfully', 'user': updated_user.to_dict()}), 200
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except Exception:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Profile update failed'}), 500
 
 
 @auth_bp.route('/change-password', methods=['POST'])
@@ -144,20 +105,21 @@ def update_profile():
 def change_password():
     """Change user password"""
     user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    
+    user = db.session.get(User, user_id)
+
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    data = request.get_json()
-    
-    if not data.get('old_password') or not data.get('new_password'):
-        return jsonify({'error': 'Old password and new password are required'}), 400
-    
-    if not user.check_password(data['old_password']):
-        return jsonify({'error': 'Old password is incorrect'}), 401
-    
-    user.set_password(data['new_password'])
-    db.session.commit()
-    
-    return jsonify({'message': 'Password changed successfully'}), 200
+
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Invalid JSON payload'}), 400
+
+    try:
+        AuthService.change_password(user, data.get('old_password'), data.get('new_password'))
+        return jsonify({'message': 'Password changed successfully'}), 200
+    except ValueError as exc:
+        status_code = 401 if 'incorrect' in str(exc).lower() else 400
+        return jsonify({'error': str(exc)}), status_code
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'Password change failed'}), 500

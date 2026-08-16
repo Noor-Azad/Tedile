@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bengal Learning Center Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">B</div>
+          <div class="brand-text">
+            <h1>Bengal Learning Center</h1>
+            <small>{{ role }} Portal</small>
+          </div>
+        </div>
+
+        <nav class="nav-links">
+          <a href="{{ url_for('dashboard') }}" class="nav-link active">Overview</a>
+          <a href="{{ url_for('attendance_page') }}" class="nav-link">Attendance</a>
+          <a href="#" class="nav-link">Notices</a>
+          <a href="#" class="nav-link">Finance</a>
+        </nav>
+
+        <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">School management</p>
+            <h2>Welcome, {{ user.name }}</h2>
+          </div>
+          <div class="user-badge">{{ role }}</div>
+        </header>
+
+        <section class="stats-grid">
+          {% for item in data.stats %}
+          <div class="stat-card {{ item.tone }}">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </div>
+          {% endfor %}
+        </section>
+
+        {% if role == 'Admin' %}
+          <section class="grid-two">
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Student Attendance</h3>
+                <span>Classes</span>
+              </div>
+              <div class="list-block">
+                {% for student in data.classes %}
+                <div class="child-row">
+                  <div>
+                    <strong>{{ student.name }}</strong>
+                    <div>{{ student.present }} present / {{ student.absent }} absent</div>
+                  </div>
+                  <div class="progress-block">
+                    <div class="progress-bar"><span style="width: {{ student.rate }}%"></span></div>
+                    <small>{{ student.rate }}%</small>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+
+          <section class="grid-two">
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Notice Board</h3>
+                <span>Latest</span>
+              </div>
+              <div class="list-block">
+                {% for notice in data.notices %}
+                <div class="notice-row">
+                  <strong>{{ notice.title }}</strong>
+                  <small>{{ notice.category }} • {{ notice.date }}</small>
+                  <div>{{ notice.message }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Billing & Fees</h3>
+                <span>Collection</span>
+              </div>
+              <div class="list-block">
+                {% for fee in data.fees %}
+                <div class="fee-row">
+                  <div>
+                    <strong>{{ fee.student }}</strong>
+                    <small>{{ fee.class_name }}</small>
+                  </div>
+                  <div>
+                    <div>{{ fee.amount }}</div>
+                    <span class="badge {{ fee.status|replace(' ', '')|lower }}">{{ fee.status }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+
+        {% elif role == 'Teacher' %}
+          <section class="grid-two">
+            <div class="panel">
+              <div class="panel-header">
+                <h3>My Classes</h3>
+                <span>Attendance</span>
+              </div>
+              <div class="list-block">
+                {% for class_item in data.classes %}
+                <div class="child-row">
+                  <div>
+                    <strong>{{ class_item.name }}</strong>
+                    <div>{{ class_item.strength }} students</div>
+                  </div>
+                  <div class="progress-block">
+                    <div class="progress-bar"><span style="width: {{ class_item.attendance }}%"></span></div>
+                    <small>{{ class_item.attendance }}%</small>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Tasks</h3>
+                <span>Due soon</span>
+              </div>
+              <div class="list-block">
+                {% for task in data.tasks %}
+                <div class="task-row">
+                  <strong>{{ task.title }}</strong>
+                  <span class="badge pending">{{ task.due }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>Latest Notices</h3>
+              <span>School bulletin</span>
+            </div>
+            <div class="list-block">
+              {% for notice in data.notices %}
+              <div class="notice-row">
+                <strong>{{ notice.title }}</strong>
+                <div>{{ notice.message }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </section>
+
+        {% else %}
+          <section class="grid-two">
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Student Progress</h3>
+                <span>Child status</span>
+              </div>
+              <div class="list-block">
+                {% for child in data.child %}
+                <div class="child-row">
+                  <div>
+                    <strong>{{ child.name }}</strong>
+                    <div>{{ child.class_name }}</div>
+                  </div>
+                  <div>
+                    <div class="progress-block">
+                      <div class="progress-bar"><span style="width: {{ child.attendance }}%"></span></div>
+                      <small>{{ child.attendance }}%</small>
+                    </div>
+                    <span class="badge {{ 'good' if child.status == 'Good' else 'follow' }}">{{ child.status }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Fee Summary</h3>
+                <span>Monthly</span>
+              </div>
+              <div class="list-block">
+                {% for fee in data.fees %}
+                <div class="fee-row">
+                  <strong>{{ fee.title }}</strong>
+                  <div>
+                    <div>{{ fee.amount }}</div>
+                    <span class="badge {{ 'paid' if fee.status == 'Paid' else 'pending' }}">{{ fee.status }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3>School Notices</h3>
+              <span>For parents</span>
+            </div>
+            <div class="list-block">
+              {% for notice in data.notices %}
+              <div class="notice-row">
+                <strong>{{ notice.title }}</strong>
+                <small>{{ notice.date }}</small>
+                <div>{{ notice.message }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+      </main>
+    </div>
+  </body>
+</html>

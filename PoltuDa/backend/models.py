@@ -1,12 +1,11 @@
 """
 Database Models for PoltuDa.in
 """
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import json
 
-db = SQLAlchemy()
+from backend.extensions import db
 
 
 class User(db.Model):
@@ -19,7 +18,7 @@ class User(db.Model):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    user_type = db.Column(db.String(20), nullable=False)  # 'customer' or 'provider'
+    user_type = db.Column(db.String(20), nullable=False)  # 'customer', 'provider', or 'admin'
     city = db.Column(db.String(100), nullable=True)
     district = db.Column(db.String(100), nullable=True)
     area = db.Column(db.String(100), nullable=True)
