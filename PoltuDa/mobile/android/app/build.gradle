@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 android {
     namespace "in.poltuda.app"
     compileSdk rootProject.ext.compileSdkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
     defaultConfig {
         applicationId "in.poltuda.app"
         minSdkVersion rootProject.ext.minSdkVersion
