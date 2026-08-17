@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "673325440652",
+    "project_id": "daulatpurlearningcenter",
+    "storage_bucket": "daulatpurlearningcenter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673325440652:android:d497f69bde3d6eb7de25a9",
+        "android_client_info": {
+          "package_name": "com.bengallearningcenter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYzAEU4xjpEPiIx9zUx5Y22T-o9MpNnyA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
