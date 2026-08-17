@@ -12,6 +12,9 @@ class Config:
     SECURE_PROXY_SSL_HEADER = ("X-Forwarded-Proto", "https")
 
     DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
     SQLALCHEMY_DATABASE_URI = DATABASE_URL or "sqlite:///bengal_learning_center.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

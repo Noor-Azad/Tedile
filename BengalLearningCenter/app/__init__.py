@@ -51,13 +51,14 @@ def create_app():
                 "app": "BengalLearningCenter"
             }, 200
 
-        except Exception:
+        except Exception as e:
             app.logger.exception("Database health check failed")
             db.session.rollback()
 
             return {
                 "status": "degraded",
-                "app": "BengalLearningCenter"
+                "app": "BengalLearningCenter",
+                "error": str(e),
             }, 503
 
     return app
