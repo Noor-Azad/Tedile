@@ -1,13 +1,18 @@
 import os
 
 from flask import Flask
+from sqlalchemy import text
 
 from app.extensions import db
 from config import Config, DevelopmentConfig, ProductionConfig
 
 
 def create_app():
-    app = Flask(__name__, template_folder="../templates", static_folder="../static")
+    app = Flask(
+        __name__,
+        template_folder="../templates",
+        static_folder="../static",
+    )
 
     app_env = (os.getenv("APP_ENV") or "development").lower()
     config_obj = ProductionConfig if app_env == "production" else DevelopmentConfig
@@ -40,13 +45,19 @@ def create_app():
     @app.route("/health")
     def health_check():
         try:
-            db.session.execute("SELECT 1")
-            status = "healthy"
-            code = 200
-        except Exception:
-            status = "degraded"
-            code = 503
+            db.session.execute(text("SELECT 1"))
+            return {
+                "status": "healthy",
+                "app": "BengalLearningCenter"
+            }, 200
 
-        return {"status": status, "app": "BengalLearningCenter"}, code
+        except Exception:
+            app.logger.exception("Database health check failed")
+            db.session.rollback()
+
+            return {
+                "status": "degraded",
+                "app": "BengalLearningCenter"
+            }, 503
 
     return app
