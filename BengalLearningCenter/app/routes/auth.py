@@ -18,8 +18,11 @@ def login_page():
     return redirect(url_for("parent.dashboard"))
 
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "GET":
+        return render_template("index.html")
+
     email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "")
     role = request.form.get("role", "")

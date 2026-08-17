@@ -4,10 +4,14 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT \"app:create_app()\""
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
       - key: FLASK_DEBUG
         value: "false"
+      - key: APP_ENV
+        value: "production"
       - key: SECRET_KEY
         sync: false
       - key: DATABASE_URL

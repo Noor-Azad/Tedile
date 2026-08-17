@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">PoltuDa.in</string>
-    <string name="title_activity_main">PoltuDa.in</string>
-    <string name="package_name">in.poltuda.app</string>
-    <string name="custom_url_scheme">in.poltuda.app</string>
-</resources>

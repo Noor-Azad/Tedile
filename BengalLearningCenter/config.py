@@ -6,6 +6,10 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     TESTING = False
     JSON_SORT_KEYS = False
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False
+    SECURE_PROXY_SSL_HEADER = ("X-Forwarded-Proto", "https")
 
     DATABASE_URL = os.getenv("DATABASE_URL")
     SQLALCHEMY_DATABASE_URI = DATABASE_URL or "sqlite:///bengal_learning_center.db"
@@ -19,7 +23,10 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SESSION_COOKIE_SECURE = False
 
 
 class ProductionConfig(Config):
     DEBUG = False
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
