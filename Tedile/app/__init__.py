@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, redirect, request
+from flask import Flask, jsonify, redirect, request
 from sqlalchemy import text
 
 from app.extensions import db, migrate
@@ -55,7 +55,20 @@ def create_app():
             return None
         if request.is_secure or request.headers.get("X-Forwarded-Proto", "").lower() == "https":
             return None
-        return redirect(request.url.replace("http://", "https://", 1), code=301)
+
+        trusted_hosts = {"localhost", "127.0.0.1"}
+        render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+        if render_hostname:
+            trusted_hosts.add(render_hostname.lower())
+        configured_hosts = app.config.get("TRUSTED_HOSTS") or ()
+        trusted_hosts.update(str(host).lower() for host in configured_hosts)
+
+        request_host = request.host.lower().split(":", 1)[0]
+        if request_host not in trusted_hosts:
+            return jsonify({"error": "Untrusted host"}), 400
+
+        location = f"https://{request.host}{request.full_path}"
+        return redirect(location, code=301)
 
     @app.route("/health")
     def health_check():
@@ -66,14 +79,14 @@ def create_app():
                 "app": "Tedile",
             }, 200
 
-        except Exception as e:
+        except Exception:
             app.logger.exception("Database health check failed")
             db.session.rollback()
 
             return {
                 "status": "degraded",
                 "app": "Tedile",
-                "error": str(e),
+                "error": "Database unavailable",
             }, 503
 
     return app

@@ -76,6 +76,16 @@ class StorageService:
             os.path.join(upload_root, safe_record_id)
         )
 
+        try:
+            is_safe_folder = (
+                os.path.commonpath([upload_root, local_folder]) == upload_root
+            )
+        except ValueError:
+            is_safe_folder = False
+
+        if not is_safe_folder:
+            raise ValueError("Invalid file path")
+
         os.makedirs(local_folder, exist_ok=True)
 
         target_path = os.path.realpath(

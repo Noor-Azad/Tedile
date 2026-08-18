@@ -158,6 +158,53 @@ def test_csrf_required_for_signup_and_login(client):
     assert client.post("/login", data={"email": "x@example.com", "password": "password123"}).status_code == 400
 
 
+def test_http_redirect_preserves_path_and_query(app, client):
+    app.config["DEBUG"] = False
+
+    response = client.get("/providers?service=electrician", base_url="http://localhost")
+
+    assert response.status_code == 301
+    assert response.headers["Location"] == "https://localhost/providers?service=electrician"
+
+
+def test_https_request_is_not_redirected(app, client):
+    app.config["DEBUG"] = False
+
+    response = client.get("/health", base_url="https://localhost")
+
+    assert response.status_code in (200, 503)
+    assert response.status_code != 301
+
+
+def test_untrusted_host_cannot_control_https_redirect(app, client):
+    app.config["DEBUG"] = False
+
+    response = client.get("/providers?next=1", base_url="http://attacker.example")
+
+    assert response.status_code == 400
+    assert "attacker.example" not in response.headers.get("Location", "")
+
+
+def test_health_hides_database_exception_details(app, client, monkeypatch):
+    class FailingSession:
+        def execute(self, statement):
+            raise RuntimeError("internal database host, SQL, and password")
+
+        def rollback(self):
+            pass
+
+    monkeypatch.setattr(db, "session", FailingSession())
+
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.get_json() == {
+        "status": "degraded",
+        "app": "Tedile",
+        "error": "Database unavailable",
+    }
+
+
 def test_csrf_required_for_logout(client):
     with client.session_transaction() as sess:
         sess["user"] = {"id": 1, "name": "Customer", "role": "customer"}
