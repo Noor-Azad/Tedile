@@ -55,6 +55,8 @@ def search_providers(
                 Provider.first_name.ilike(like),
                 Provider.last_name.ilike(like),
                 Provider.city.ilike(like),
+                Service.name.ilike(like),
+                Service.slug.ilike(like),
             )
         )
 

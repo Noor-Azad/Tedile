@@ -92,6 +92,23 @@ def test_search_filters_by_service(app):
         assert other.profile_code not in codes
 
 
+def test_search_keyword_matches_service_name(app):
+    with app.app_context():
+        service = Service.query.filter_by(slug="electrician").first()
+        if service is None:
+            service = Service(name="Electrician", slug="electrician")
+            db.session.add(service)
+            db.session.commit()
+
+        provider = _make_provider("Kolkata", 22.5726, 88.3639, attach_service=False)
+        db.session.add(ProviderService(provider_id=provider.id, service_id=service.id))
+        db.session.commit()
+
+        results = search_providers(keyword="Electrician")
+
+        assert provider.profile_code in {record["id"] for record in results}
+
+
 def test_search_verified_only(app):
     with app.app_context():
         verified = _make_provider("Kolkata", 22.5726, 88.3639, verified=True)
