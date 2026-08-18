@@ -1,0 +1,95 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 2 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  codeql-ubuntu:
+    name: CodeQL ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - python
+          - javascript-typescript
+          - java-kotlin
+          - actions
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+
+  codeql-swift:
+    name: CodeQL Swift
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: BengalLearningCenter/mobile/package-lock.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: swift
+          build-mode: manual
+
+      - name: Install Capacitor dependencies
+        working-directory: BengalLearningCenter/mobile
+        run: npm ci
+
+      - name: Synchronize Capacitor iOS project
+        working-directory: BengalLearningCenter/mobile
+        run: npx cap sync ios
+
+      - name: Install CocoaPods dependencies
+        working-directory: BengalLearningCenter/mobile/ios/App
+        run: pod install --deployment
+
+      - name: Build iOS workspace
+        working-directory: BengalLearningCenter/mobile/ios/App
+        run: >
+          xcodebuild
+          -workspace App.xcworkspace
+          -scheme App
+          -sdk iphonesimulator
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
