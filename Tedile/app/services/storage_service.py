@@ -16,8 +16,16 @@ def sanitize_filename(filename: str) -> str:
     return safe or "file"
 
 
+def sanitize_folder(folder: str) -> str:
+    if not folder:
+        return "documents"
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(folder).strip("/"))
+    safe = safe.strip("._-")
+    return safe or "documents"
+
+
 def build_s3_key(folder: str, record_id, original_filename: str) -> str:
-    category = (folder or "documents").strip("/")
+    category = sanitize_folder(folder)
     record_slug = sanitize_filename(str(record_id))
     clean_name = sanitize_filename(original_filename)
     return f"{category}/{record_slug}/{clean_name}"
@@ -57,12 +65,12 @@ class StorageService:
             )
             return self.get_public_url(s3_key), s3_key
 
-        local_folder = os.path.join(os.getcwd(), "instance", "uploads", (folder or "documents").strip("/"), sanitize_filename(str(record_id)))
+        local_folder = os.path.join(os.getcwd(), "instance", "uploads", sanitize_folder(folder), sanitize_filename(str(record_id)))
         os.makedirs(local_folder, exist_ok=True)
         target_path = os.path.join(local_folder, sanitize_filename(file_name))
         file_storage.seek(0)
         with open(target_path, "wb") as output_file:
             output_file.write(file_storage.read())
 
-        local_url = f"/uploads/{(folder or 'documents').strip('/')}/{sanitize_filename(str(record_id))}/{sanitize_filename(file_name)}"
+        local_url = f"/uploads/{sanitize_folder(folder)}/{sanitize_filename(str(record_id))}/{sanitize_filename(file_name)}"
         return local_url, s3_key
