@@ -15,7 +15,7 @@ def create_app():
     )
 
     app_env = (os.getenv("APP_ENV") or "development").lower()
-    config_obj = ProductionConfig if app_env == "production" else DevelopmentConfig
+    config_obj = ProductionConfig() if app_env == "production" else DevelopmentConfig()
 
     app.config.from_object(config_obj)
     app.config.from_prefixed_env()

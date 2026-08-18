@@ -1,8 +1,13 @@
 import os
+import secrets
+
+# Generated once per process if SECRET_KEY is not set via environment.
+# Never hardcode a real secret key in source control.
+_FALLBACK_SECRET_KEY = secrets.token_hex(32)
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "REDACTED-SECRET-KEY")
+    SECRET_KEY = os.getenv("SECRET_KEY", _FALLBACK_SECRET_KEY)
     DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     TESTING = False
     JSON_SORT_KEYS = False
@@ -33,3 +38,9 @@ class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = "Lax"
+
+    def __init__(self):
+        if os.getenv("SECRET_KEY") is None:
+            raise RuntimeError(
+                "SECRET_KEY environment variable must be set in production."
+            )
