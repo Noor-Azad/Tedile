@@ -65,22 +65,31 @@ class StorageService:
             )
             return self.get_public_url(s3_key), s3_key
 
-        upload_root = os.path.abspath(
+        upload_root = os.path.realpath(
             os.path.join(os.getcwd(), "instance", "uploads")
         )
 
-        local_folder = os.path.abspath(
-            os.path.join(upload_root, sanitize_filename(str(record_id)))
+        safe_record_id = sanitize_filename(str(record_id))
+        safe_filename = sanitize_filename(file_name)
+
+        local_folder = os.path.realpath(
+            os.path.join(upload_root, safe_record_id)
         )
 
         os.makedirs(local_folder, exist_ok=True)
 
-        safe_filename = sanitize_filename(file_name)
-        target_path = os.path.abspath(
+        target_path = os.path.realpath(
             os.path.join(local_folder, safe_filename)
         )
 
-        if os.path.commonpath([upload_root, target_path]) != upload_root:
+        try:
+            is_safe_path = (
+                os.path.commonpath([upload_root, target_path]) == upload_root
+            )
+        except ValueError:
+            is_safe_path = False
+
+        if not is_safe_path:
             raise ValueError("Invalid file path")
 
         file_storage.seek(0)
