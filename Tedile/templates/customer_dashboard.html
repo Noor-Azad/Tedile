@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile | Your bookings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="marketplace-page">
+    <header class="site-header">
+      <a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a>
+      <div class="header-actions"><span class="account-name">{{ user.name }}</span><form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="button button-quiet" type="submit">Log out</button></form></div>
+    </header>
+    <main class="dashboard-shell">
+      <section class="dashboard-intro"><p class="eyebrow">YOUR TEDILE</p><h1>Bookings, without the back-and-forth.</h1><p>Keep an eye on every request and the people helping you get it done.</p><a class="button button-primary" href="{{ url_for('auth.login_page') }}#services">Find another service</a></section>
+      <section class="booking-section"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Upcoming and past bookings</h2></div></div><div class="booking-grid" id="booking-grid">
+        {% for booking in bookings %}<article class="booking-card"><div class="booking-card-top"><span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span><span class="booking-reference">{{ booking.reference }}</span></div><h3>{{ booking.provider.name }}</h3><p>{{ booking.service.name }}</p>{% if booking.scheduled_at %}<p class="booking-time">{{ booking.scheduled_at }}</p>{% endif %}{% if booking.notes %}<p class="booking-notes">{{ booking.notes }}</p>{% endif %}</article>{% else %}<div class="empty-state"><span class="empty-mark">+</span><h3>Your next useful connection starts here.</h3><p>Browse services and send your first request when you’re ready.</p><a class="button button-secondary" href="{{ url_for('auth.login_page') }}#services">Browse services</a></div>{% endfor %}
+      </div></section>
+    </main>
+    <script src="{{ url_for('static', filename='customer.js') }}"></script>
+  </body>
+</html>

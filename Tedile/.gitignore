@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+instance/
+*.db
+.env
+data/imports/**/*.json
+node_modules/
+mobile/android/app/build/
+mobile/android/build/
+mobile/ios/App/Pods/

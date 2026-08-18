@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile — Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Tedile</h1>
+      <div class="topbar-user">
+        <span>{{ user.name }} · {{ user.role }}</span>
+        <form method="POST" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit">Log out</button>
+        </form>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      {% if user.role == 'customer' %}
+      <section class="card">
+        <h2>Find a service provider</h2>
+        <div class="search-bar">
+          <input id="search-keyword" placeholder="Search by name or city" />
+          <select id="search-service"></select>
+          <button id="search-btn">Search</button>
+        </div>
+        <div id="provider-results" class="provider-grid"></div>
+      </section>
+
+      <section class="card">
+        <h2>My bookings</h2>
+        <div id="bookings-list">
+          {% for booking in bookings %}
+          <div class="booking-row">
+            <span>{{ booking.provider.name }} · {{ booking.service.name }}</span>
+            <span class="badge">{{ booking.status }}</span>
+          </div>
+          {% else %}
+          <p>No bookings yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% elif user.role == 'provider' %}
+      <section class="card">
+        <h2>Provider profile</h2>
+        {% if provider %}
+        <p>Rating: {{ provider.rating }} · Jobs completed: {{ provider.jobs_completed }}</p>
+        <form method="POST" action="{{ url_for('provider.update_availability') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <select name="availability">
+            <option value="available" {% if provider.availability == 'available' %}selected{% endif %}>Available</option>
+            <option value="busy" {% if provider.availability == 'busy' %}selected{% endif %}>Busy</option>
+            <option value="offline" {% if provider.availability == 'offline' %}selected{% endif %}>Offline</option>
+          </select>
+          <button type="submit">Update</button>
+        </form>
+        {% else %}
+        <p>No provider profile linked to this account yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Incoming bookings</h2>
+        {% for booking in bookings %}
+        <div class="booking-row">
+          <span>{{ booking.customer_name }} · {{ booking.service.name }}</span>
+          <span class="badge">{{ booking.status }}</span>
+          <form method="POST" action="{{ url_for('provider.update_booking_status', booking_reference=booking.reference) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <select name="status">
+              <option value="confirmed">Confirm</option>
+              <option value="completed">Complete</option>
+              <option value="cancelled">Cancel</option>
+            </select>
+            <button type="submit">Update</button>
+          </form>
+        </div>
+        {% else %}
+        <p>No bookings yet.</p>
+        {% endfor %}
+      </section>
+      {% else %}
+      <section class="card">
+        <h2>All providers</h2>
+        {% for p in providers %}
+        <div class="booking-row">
+          <span>{{ p.name }} · {{ p.city }}</span>
+          <span class="badge {{ 'verified' if p.verified else '' }}">{{ 'Verified' if p.verified else 'Unverified' }}</span>
+          <form method="POST" action="{{ url_for('admin.verify_provider', provider_id=p.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="verified" value="{{ 'false' if p.verified else 'true' }}" />
+            <button type="submit">{{ 'Unverify' if p.verified else 'Verify' }}</button>
+          </form>
+        </div>
+        {% else %}
+        <p>No providers yet.</p>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

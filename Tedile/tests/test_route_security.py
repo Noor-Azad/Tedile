@@ -1,0 +1,225 @@
+import pytest
+
+from app.extensions import db
+from app.models.booking import Booking
+from app.models.provider import Provider
+from app.models.provider_service import ProviderService
+from app.models.service import Service
+from app.models.user import User
+from tests.conftest import create_isolated_test_app
+
+
+@pytest.fixture
+def app():
+    flask_app = create_isolated_test_app()
+    with flask_app.app_context():
+        db.create_all()
+        yield flask_app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def csrf_token(client):
+    client.get("/")
+    with client.session_transaction() as sess:
+        return sess["csrf_token"]
+
+
+def user(email, role):
+    account = User(email=email, name=role.title(), role=role, phone="+910000000000")
+    account.set_password("password123")
+    db.session.add(account)
+    db.session.commit()
+    db.session.refresh(account)
+    db.session.expunge(account)
+    return account
+
+
+def provider(profile_code, user_id=None):
+    record = Provider(
+        profile_code=profile_code,
+        user_id=user_id,
+        first_name="Test",
+        last_name="Provider",
+        phone="+910000000001",
+        whatsapp="+910000000001",
+        city="Malda",
+        state="West Bengal",
+        latitude=25.0057449,
+        longitude=88.1398483,
+        hourly_rate=300,
+        verified=True,
+        rating=4.5,
+    )
+    db.session.add(record)
+    db.session.commit()
+    db.session.refresh(record)
+    db.session.expunge(record)
+    return record
+
+
+def service_for(record):
+    service = Service(name="Plumber", slug="plumber")
+    db.session.add(service)
+    db.session.commit()
+    db.session.add(ProviderService(provider_id=record.id, service_id=service.id))
+    db.session.commit()
+    db.session.refresh(service)
+    db.session.expunge(service)
+    return service
+
+
+def set_session(client, account):
+    token = csrf_token(client)
+    with client.session_transaction() as sess:
+        sess["user"] = account.to_session_dict()
+    return token
+
+
+def test_public_profile_contains_only_public_fields(app, client):
+    with app.app_context():
+        record = provider("PROFILE-1")
+        service = Service(name="Plumber", slug="plumber")
+        db.session.add(service)
+        db.session.commit()
+        db.session.add(ProviderService(provider_id=record.id, service_id=service.id))
+        db.session.commit()
+        profile_code = record.profile_code
+
+    response = client.get(f"/api/providers/{profile_code}")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["id"] == profile_code
+    for forbidden in ("phone", "whatsapp", "email", "latitude", "longitude", "user_id"):
+        assert forbidden not in payload
+
+
+def test_services_api_excludes_database_ids(app, client):
+    with app.app_context():
+        db.session.add(Service(name="Plumber", slug="plumber"))
+        db.session.commit()
+
+    response = client.get("/api/services")
+    assert response.status_code == 200
+    assert response.get_json()["data"] == [{
+        "name": "Plumber",
+        "slug": "plumber",
+        "display_order": 0,
+        "display_group": None,
+        "icon_key": None,
+    }]
+
+
+def test_booking_response_excludes_internal_ids(app, client):
+    with app.app_context():
+        customer = user("customer@example.com", "customer")
+        record = provider("BOOKING-PROVIDER")
+        service = service_for(record)
+
+    token = set_session(client, customer)
+    response = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": record.profile_code,
+            "service_slug": service.slug,
+            "notes": "Please call before arrival",
+        },
+    )
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert set(payload) == {"reference", "provider", "service", "status", "scheduled_at", "notes"}
+    assert payload["provider"]["id"] == record.profile_code
+    for forbidden in ("customer_id", "provider_id", "service_id", "id"):
+        assert forbidden not in payload
+
+
+def test_role_boundaries_reject_wrong_dashboard(app, client):
+    with app.app_context():
+        customer = user("customer@example.com", "customer")
+        provider_user = user("provider@example.com", "provider")
+
+    set_session(client, customer)
+    assert client.get("/provider/dashboard").status_code == 403
+    assert client.get("/admin/dashboard").status_code == 403
+
+    set_session(client, provider_user)
+    assert client.get("/customer/dashboard").status_code == 403
+    assert client.get("/admin/dashboard").status_code == 403
+
+
+def test_csrf_required_for_signup_and_login(client):
+    assert client.post("/signup", data={"email": "x@example.com", "name": "X", "password": "password123"}).status_code == 400
+    assert client.post("/login", data={"email": "x@example.com", "password": "password123"}).status_code == 400
+
+
+def test_csrf_required_for_logout(client):
+    with client.session_transaction() as sess:
+        sess["user"] = {"id": 1, "name": "Customer", "role": "customer"}
+    assert client.post("/logout").status_code == 400
+
+
+def test_csrf_required_for_customer_booking(app, client):
+    with app.app_context():
+        customer = user("customer@example.com", "customer")
+        record = provider("CSRF-CUSTOMER")
+        service = service_for(record)
+    set_session(client, customer)
+
+    response = client.post(
+        "/customer/bookings",
+        data={"provider_profile_code": record.profile_code, "service_slug": service.slug},
+    )
+    assert response.status_code == 400
+
+
+def test_csrf_required_for_provider_mutations(app, client):
+    with app.app_context():
+        account = user("provider@example.com", "provider")
+        record = provider("CSRF-PROVIDER", user_id=account.id)
+        service = service_for(record)
+        booking = Booking(customer_id=user("customer@example.com", "customer").id, provider_id=record.id, service_id=service.id)
+        db.session.add(booking)
+        db.session.commit()
+        booking_reference = booking.public_reference
+    set_session(client, account)
+
+    assert client.post("/provider/availability", data={"availability": "busy"}).status_code == 400
+    assert client.post(f"/provider/bookings/{booking_reference}/status", data={"status": "confirmed"}).status_code == 400
+
+
+def test_csrf_required_for_admin_verification(app, client):
+    with app.app_context():
+        account = user("admin@example.com", "admin")
+        record = provider("CSRF-ADMIN")
+    set_session(client, account)
+
+    response = client.post(f"/admin/providers/{record.id}/verify", data={"verified": "true"})
+    assert response.status_code == 400
+
+
+def test_provider_cannot_update_another_providers_booking(app, client):
+    with app.app_context():
+        provider_account = user("provider-a@example.com", "provider")
+        provider_a = provider("PROVIDER-A", user_id=provider_account.id)
+        provider_b = provider("PROVIDER-B")
+        service = service_for(provider_b)
+        customer = user("booking-customer@example.com", "customer")
+        booking = Booking(customer_id=customer.id, provider_id=provider_b.id, service_id=service.id)
+        db.session.add(booking)
+        db.session.commit()
+        booking_reference = booking.public_reference
+    token = set_session(client, provider_account)
+
+    response = client.post(
+        f"/provider/bookings/{booking_reference}/status",
+        data={"csrf_token": token, "status": "confirmed"},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(Booking, booking.id).status == "pending"

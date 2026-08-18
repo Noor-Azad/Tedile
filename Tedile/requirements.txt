@@ -1,0 +1,9 @@
+Flask==2.3.2
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+psycopg2-binary==2.9.9
+boto3==1.35.0
+gunicorn==22.0.0
+Werkzeug==2.3.7
+cryptography==43.0.1
+python-dotenv==1.0.1
