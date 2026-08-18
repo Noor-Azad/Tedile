@@ -65,7 +65,8 @@ class StorageService:
             )
             return self.get_public_url(s3_key), s3_key
 
-        local_folder = os.path.join(os.getcwd(), "instance", "uploads", sanitize_folder(folder), sanitize_filename(str(record_id)))
+        upload_root = os.path.join(os.getcwd(), "instance", "uploads")
+        local_folder = os.path.join(upload_root, sanitize_filename(str(record_id)))
         os.makedirs(local_folder, exist_ok=True)
         target_path = os.path.join(local_folder, sanitize_filename(file_name))
         file_storage.seek(0)
