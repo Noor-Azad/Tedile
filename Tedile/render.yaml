@@ -3,6 +3,7 @@ services:
     name: tedile
     env: python
     plan: free
+    rootDir: Tedile
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn --bind 0.0.0.0:$PORT \"app:create_app()\""
     envVars:
