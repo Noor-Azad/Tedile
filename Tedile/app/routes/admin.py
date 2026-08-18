@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from app.extensions import db
 from app.models.provider import Provider
@@ -26,4 +26,4 @@ def verify_provider(provider_id):
 
     provider.verified = bool(request.form.get("verified", "true").lower() == "true")
     db.session.commit()
-    return jsonify(provider.to_admin_dto())
+    return redirect(url_for("admin.admin_dashboard"))

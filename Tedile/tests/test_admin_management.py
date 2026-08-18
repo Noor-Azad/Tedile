@@ -88,6 +88,29 @@ def test_admin_only_access(client):
     assert client.get("/admin/dashboard").status_code == 403
 
 
+def test_admin_dashboard_verify_redirects_and_shows_verified_provider(app, client):
+    admin = create_user("admin@example.com", "admin")
+    provider = create_provider(profile_code="P-PENDING")
+    token = login_as(client, admin)
+
+    response = client.post(
+        f"/admin/providers/{provider.id}/verify",
+        data={"csrf_token": token, "verified": "true"},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/admin/dashboard")
+
+    with app.app_context():
+        updated_provider = Provider.query.get(provider.id)
+        assert updated_provider.verified is True
+
+    dashboard = client.get(response.headers["Location"])
+    assert dashboard.status_code == 200
+    assert b"Existing Provider" in dashboard.data
+    assert b"Verified" in dashboard.data
+
+
 def test_admin_can_create_update_and_block_provider(app, client):
     admin = create_user("admin@example.com", "admin")
     token = login_as(client, admin)
