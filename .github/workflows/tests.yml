@@ -33,4 +33,4 @@ jobs:
           APP_ENV: testing
           TESTING: "true"
         run: |
-          pytest -q
+          python -m pytest -q
