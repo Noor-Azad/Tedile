@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.extensions import db, migrate
 from app.security import get_csrf_token
-from config import Config, DevelopmentConfig, ProductionConfig
+from config import DevelopmentConfig, ProductionConfig, UATConfig
 
 
 def create_app():
@@ -16,7 +16,18 @@ def create_app():
     )
 
     app_env = (os.getenv("APP_ENV") or "development").lower()
-    config_obj = ProductionConfig() if app_env == "production" else DevelopmentConfig()
+    config_classes = {
+        "development": DevelopmentConfig,
+        "testing": DevelopmentConfig,
+        "uat": UATConfig,
+        "production": ProductionConfig,
+    }
+    try:
+        config_obj = config_classes[app_env]()
+    except KeyError as exc:
+        raise RuntimeError(
+            f"Unsupported APP_ENV: {app_env}. Use development, uat, or production."
+        ) from exc
 
     app.config.from_object(config_obj)
     app.config.from_prefixed_env()

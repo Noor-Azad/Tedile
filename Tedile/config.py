@@ -61,3 +61,18 @@ class ProductionConfig(Config):
                 "ENCRYPTION_KEY environment variable must be set in production "
                 "(a rotating/ephemeral key would make encrypted PII unreadable)."
             )
+        if os.getenv("DATABASE_URL") is None:
+            raise RuntimeError(
+                "DATABASE_URL environment variable must be set in production."
+            )
+        if self.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"):
+            raise RuntimeError(
+                "SQLite is not allowed for UAT or production; use PostgreSQL."
+            )
+
+
+class UATConfig(ProductionConfig):
+    DEBUG = False
+    TESTING = False
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
