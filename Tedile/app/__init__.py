@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify, redirect, request
+from flask import Flask, jsonify, redirect, request, session
 from sqlalchemy import text
 
 from app.extensions import db, limiter, migrate
@@ -59,6 +59,41 @@ def create_app():
     app.register_blueprint(provider_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
+
+        sensitive_paths = (
+            "/customer/dashboard",
+            "/customer/bookings",
+            "/customer/providers",
+            "/provider/dashboard",
+            "/provider/availability",
+            "/provider/bookings",
+            "/admin/dashboard",
+            "/admin/providers",
+            "/api/session",
+            "/api/admin",
+            "/login",
+            "/signup",
+        )
+        if session.get("user") and any(
+            request.path == path or request.path.startswith(f"{path}/")
+            for path in sensitive_paths
+        ):
+            response.headers["Cache-Control"] = "no-store"
+        elif session.get("user") and request.method in {"POST", "PATCH", "PUT", "DELETE"} and (
+            request.path == "/api/providers" or request.path.startswith("/api/providers/")
+        ):
+            response.headers["Cache-Control"] = "no-store"
+
+        return response
 
     @app.before_request
     def enforce_https():
