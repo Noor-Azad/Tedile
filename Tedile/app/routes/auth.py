@@ -58,6 +58,7 @@ def _begin_reset_otp(user):
 def _set_authenticated_user(user):
     session.pop("otp_challenge", None)
     session["user"] = user.to_session_dict()
+    session["last_activity"] = time.time()
 
 
 def _start_onboarding(user):

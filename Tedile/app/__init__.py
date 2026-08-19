@@ -1,6 +1,8 @@
 import os
+import logging
+import time
 
-from flask import Flask, jsonify, redirect, request, session
+from flask import Flask, jsonify, redirect, request, session, url_for
 from sqlalchemy import text
 
 from app.extensions import db, limiter, migrate
@@ -16,6 +18,8 @@ def create_app():
     )
 
     app_env = (os.getenv("APP_ENV") or "development").lower()
+    if app_env in {"development", "uat"}:
+        app.logger.setLevel(logging.INFO)
     config_classes = {
         "development": DevelopmentConfig,
         "testing": DevelopmentConfig,
@@ -105,6 +109,23 @@ def create_app():
             response.headers["Cache-Control"] = "no-store"
 
         return response
+
+    @app.before_request
+    def enforce_browser_session():
+        session.permanent = False
+
+    @app.before_request
+    def enforce_idle_session_timeout():
+        if not session.get("user"):
+            return None
+        now = time.time()
+        last_activity = session.get("last_activity")
+        timeout = app.config["SESSION_IDLE_TIMEOUT_SECONDS"]
+        if last_activity is not None and now - last_activity > timeout:
+            session.clear()
+            return redirect(url_for("auth.login"))
+        session["last_activity"] = now
+        return None
 
     @app.before_request
     def enforce_https():
