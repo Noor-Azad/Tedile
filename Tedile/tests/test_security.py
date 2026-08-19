@@ -99,8 +99,9 @@ def test_session_cookie_excludes_pii(app, client):
     client.post("/login", data={"email": "customer@example.com", "password": "password123", "csrf_token": _csrf_token(client)})
 
     with client.session_transaction() as sess:
-        user = sess["user"]
-        assert set(user.keys()) == {"id", "name", "role"}
+        assert "user" not in sess
+        assert set(sess["otp_challenge"]) == {"user_id", "digest", "salt", "expires_at", "attempts"}
+        assert "password123" not in repr(dict(sess))
 
 
 def test_contact_details_require_authorized_booking(app, client):
@@ -111,6 +112,9 @@ def test_contact_details_require_authorized_booking(app, client):
         customer_id = customer.id
 
     client.post("/login", data={"email": "customer@example.com", "password": "password123", "csrf_token": _csrf_token(client)})
+    with client.session_transaction() as sess:
+        sess["user"] = {"id": customer_id, "name": "Customer", "role": "customer"}
+        sess.pop("otp_challenge", None)
 
     # No booking yet -> forbidden.
     response = client.get("/customer/providers/P-TEST/contact")
@@ -140,4 +144,3 @@ def test_encrypted_string_refuses_to_store_plaintext_without_cryptography(monkey
 
     with pytest.raises(RuntimeError, match="cryptography"):
         EncryptedString()
-

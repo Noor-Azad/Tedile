@@ -42,9 +42,31 @@ def test_production_environment_uses_production_config(monkeypatch):
         DATABASE_URL="postgresql://prod-host/tedile_prod",
         SECRET_KEY="prod-secret",
         ENCRYPTION_KEY="invalid-for-config-only",
+        OTP_DELIVERY_PROVIDER="msg91",
+        OTP_REQUIRED="true",
     )
 
     assert config.ProductionConfig().DEBUG is False
+
+
+@pytest.mark.parametrize(
+    "values, message",
+    [
+        ({"OTP_REQUIRED": "false", "OTP_DELIVERY_PROVIDER": "msg91"}, "OTP_REQUIRED"),
+        ({"OTP_REQUIRED": "true", "OTP_DELIVERY_PROVIDER": "console"}, "console"),
+    ],
+)
+def test_production_rejects_unsafe_otp_configuration(monkeypatch, values, message):
+    config = load_config(
+        monkeypatch,
+        "production",
+        DATABASE_URL="postgresql://prod-host/tedile_prod",
+        SECRET_KEY="prod-secret",
+        ENCRYPTION_KEY="invalid-for-config-only",
+        **values,
+    )
+    with pytest.raises(RuntimeError, match=message):
+        config.ProductionConfig()
 
 
 def test_unknown_environment_fails_clearly(monkeypatch):

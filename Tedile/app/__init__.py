@@ -31,6 +31,9 @@ def create_app():
 
     app.config.from_object(config_obj)
     app.config.from_prefixed_env()
+    app.config["APP_ENV"] = app_env
+    if not app.config.get("OTP_REQUIRED", True):
+        raise RuntimeError("OTP_REQUIRED must be true in all Tedile environments.")
     app.secret_key = app.config["SECRET_KEY"]
     app.context_processor(lambda: {"csrf_token": get_csrf_token})
 
@@ -88,6 +91,8 @@ def create_app():
             "/api/admin",
             "/login",
             "/signup",
+            "/otp",
+            "/onboarding",
         )
         if session.get("user") and any(
             request.path == path or request.path.startswith(f"{path}/")

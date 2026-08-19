@@ -41,6 +41,10 @@ class Config:
     DEFAULT_SEARCH_RADIUS_KM = int(os.getenv("DEFAULT_SEARCH_RADIUS_KM", "50"))
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_HEADERS_ENABLED = False
+    OTP_EXPIRY_SECONDS = int(os.getenv("OTP_EXPIRY_SECONDS", "300"))
+    OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+    OTP_REQUIRED = os.getenv("OTP_REQUIRED", "true").lower() in {"1", "true", "yes", "on"}
+    OTP_DELIVERY_PROVIDER = os.getenv("OTP_DELIVERY_PROVIDER", "unconfigured")
 
 
 class DevelopmentConfig(Config):
@@ -70,6 +74,18 @@ class ProductionConfig(Config):
         if self.SQLALCHEMY_DATABASE_URI.startswith("sqlite:///"):
             raise RuntimeError(
                 "SQLite is not allowed for UAT or production; use PostgreSQL."
+            )
+        if os.getenv("APP_ENV", "development").lower() != "production":
+            return
+        if not self.OTP_REQUIRED:
+            raise RuntimeError("OTP_REQUIRED must be true in production.")
+        if self.OTP_DELIVERY_PROVIDER in ("", "unconfigured"):
+            raise RuntimeError(
+                "OTP_DELIVERY_PROVIDER must be configured in UAT or production."
+            )
+        if self.OTP_DELIVERY_PROVIDER == "console":
+            raise RuntimeError(
+                "OTP_DELIVERY_PROVIDER=console is not allowed in UAT or production."
             )
 
 
