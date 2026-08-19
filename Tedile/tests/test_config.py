@@ -1,4 +1,5 @@
 import importlib
+import logging
 
 import pytest
 
@@ -25,6 +26,38 @@ def test_development_console_otp_is_accepted(monkeypatch):
     config = load_config(monkeypatch, "development", OTP_REQUIRED="true", OTP_DELIVERY_PROVIDER="console")
 
     assert config.DevelopmentConfig().OTP_DELIVERY_PROVIDER == "console"
+
+
+def test_development_app_logger_allows_info(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    from app import create_app
+
+    app = create_app()
+
+    assert app.logger.level == logging.INFO
+
+
+def test_sessions_are_configured_as_browser_sessions(monkeypatch):
+    config = load_config(monkeypatch, "development")
+
+    assert config.DevelopmentConfig().SESSION_COOKIE_PERMANENT is False
+    assert config.DevelopmentConfig().SESSION_IDLE_TIMEOUT_SECONDS == 1800
+
+
+def test_custom_idle_timeout_configuration(monkeypatch):
+    config = load_config(monkeypatch, "development", SESSION_IDLE_TIMEOUT_SECONDS="600")
+
+    assert config.DevelopmentConfig().SESSION_IDLE_TIMEOUT_SECONDS == 600
+
+
+def test_uat_app_logger_allows_info(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "uat")
+    from app import UATConfig, create_app
+
+    monkeypatch.setattr(UATConfig, "__init__", lambda self: None)
+    app = create_app()
+
+    assert app.logger.level == logging.INFO
 
 
 def test_uat_environment_uses_uat_config(monkeypatch):

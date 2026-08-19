@@ -1,4 +1,5 @@
 import pytest
+import app as app_module
 
 from app.extensions import db, limiter
 from app.models.user import User
@@ -119,6 +120,36 @@ def test_incomplete_existing_user_login_enters_location_without_otp(app, client)
     assert response.headers["Location"].endswith("/onboarding/location")
     with client.session_transaction() as sess:
         assert "otp_challenge" not in sess
+
+
+def test_authenticated_activity_refreshes_and_enforces_idle_timeout(app, client, monkeypatch):
+    with app.app_context():
+        user = make_user("idle@example.com")
+        user.onboarding_completed = True
+        db.session.commit()
+        user_session = user.to_session_dict()
+
+    current_time = [1000.0]
+    monkeypatch.setattr(app_module.time, "time", lambda: current_time[0])
+    with client.session_transaction() as sess:
+        sess["user"] = user_session
+        sess["last_activity"] = 1000.0
+
+    assert client.get("/customer/dashboard").status_code == 200
+    current_time[0] = 1500.0
+    assert client.get("/customer/dashboard").status_code == 200
+    current_time[0] = 3301.0
+    response = client.get("/customer/dashboard")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+    with client.session_transaction() as sess:
+        assert "user" not in sess
+
+
+def test_unauthenticated_requests_are_not_idle_timed_out(app, client, monkeypatch):
+    monkeypatch.setattr(app_module.time, "time", lambda: 10_000.0)
+    response = client.get("/")
+    assert response.status_code == 200
 
 
 def test_location_denial_stays_on_location_step(client):
