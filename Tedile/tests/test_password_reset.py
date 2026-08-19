@@ -68,6 +68,25 @@ def test_registration_rejects_invalid_mobile_number(client, phone):
     assert response.status_code == 400
 
 
+def test_invalid_registration_does_not_create_user(app, client):
+    response = client.post("/signup", data={"csrf_token": csrf_token(client), "email": "atomic@example.com", "name": "Atomic User", "password": "password123", "phone": "5123456789"})
+
+    assert response.status_code == 400
+    with app.app_context():
+        assert User.query.filter_by(email="atomic@example.com").count() == 0
+
+
+def test_invalid_registration_can_retry_same_email_with_valid_phone(app, client, monkeypatch):
+    monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: True)
+    invalid = client.post("/signup", data={"csrf_token": csrf_token(client), "email": "retry@example.com", "name": "Retry User", "password": "password123", "phone": "123"})
+    valid = client.post("/signup", data={"csrf_token": csrf_token(client), "email": "retry@example.com", "name": "Retry User", "password": "password123", "phone": "9876543210"})
+
+    assert invalid.status_code == 400
+    assert valid.status_code == 302
+    with app.app_context():
+        assert User.query.filter_by(email="retry@example.com").count() == 1
+
+
 def test_valid_formatted_indian_phone_registration_is_normalized(app, client, monkeypatch):
     sent = {}
     monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)

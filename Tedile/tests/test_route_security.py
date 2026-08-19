@@ -81,6 +81,28 @@ def set_session(client, account):
     return token
 
 
+def test_profile_is_authenticated_and_self_scoped(app, client):
+    account = user("profile@example.com", "customer")
+    set_session(client, account)
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert b"profile@example.com" in response.data
+    assert b"Customer" in response.data
+    assert b"password_hash" not in response.data
+    assert b"password123" not in response.data
+    assert b"otp_challenge" not in response.data
+    assert client.get("/profile/1").status_code == 404
+
+
+def test_profile_requires_authentication(client):
+    response = client.get("/profile")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")
+
+
 def test_public_profile_contains_only_public_fields(app, client):
     with app.app_context():
         record = provider("PROFILE-1")

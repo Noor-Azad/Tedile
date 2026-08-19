@@ -9,7 +9,7 @@
   <body class="marketplace-page">
     <header class="site-header">
       <a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a>
-      <div class="header-actions"><span class="account-name">{{ user.name }}</span><form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="button button-quiet" type="submit">Log out</button></form></div>
+      <div class="header-actions"><span class="account-name">{{ user.name }}</span><a class="button button-quiet" href="{{ url_for('auth.profile_page') }}">My Profile</a><form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="button button-quiet" type="submit">Log out</button></form></div>
     </header>
     <main class="dashboard-shell">
       <section class="dashboard-intro"><p class="eyebrow">YOUR TEDILE</p><h1>Bookings, without the back-and-forth.</h1><p>Keep an eye on every request and the people helping you get it done.</p><a class="button button-primary" href="#services">Find another service</a></section>

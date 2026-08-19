@@ -31,8 +31,12 @@ def register_user(email: str, password: str, name: str, role: str = "customer", 
 
     user = User(email=email, name=name, role=role, phone=phone)
     user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.add(user)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     return user
 
 
