@@ -66,7 +66,7 @@ def test_failed_login_attempts_are_throttled_without_email_disclosure(app, clien
     assert b"wrong-password" not in throttled.data
 
 
-def test_successful_credentials_enter_otp_before_application(app, client):
+def test_successful_existing_user_login_goes_directly_to_onboarding_or_dashboard(app, client):
     with app.app_context():
         create_user("customer@example.com", "customer")
         create_user("provider@example.com", "provider")
@@ -74,8 +74,8 @@ def test_successful_credentials_enter_otp_before_application(app, client):
 
     response = login(client, "customer@example.com", "correct-password")
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/otp")
-    assert client.get("/api/session").status_code == 401
+    assert response.headers["Location"].endswith("/onboarding/location")
+    assert client.get("/api/session").get_json()["user"]["role"] == "customer"
 
 
 def test_csrf_is_checked_before_login_authentication(client):

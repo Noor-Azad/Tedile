@@ -99,8 +99,7 @@ def test_session_cookie_excludes_pii(app, client):
     client.post("/login", data={"email": "customer@example.com", "password": "password123", "csrf_token": _csrf_token(client)})
 
     with client.session_transaction() as sess:
-        assert "user" not in sess
-        assert set(sess["otp_challenge"]) == {"user_id", "digest", "salt", "expires_at", "attempts"}
+        assert set(sess["user"]) == {"id", "name", "role"}
         assert "password123" not in repr(dict(sess))
 
 

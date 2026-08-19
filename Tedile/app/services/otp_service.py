@@ -15,7 +15,11 @@ def deliver_otp(destination, otp):
         if current_app.config.get("APP_ENV") not in {"development", "uat"}:
             raise RuntimeError("Console OTP delivery is only available in development/UAT.")
         identifier = hashlib.sha256(destination.encode()).hexdigest()[:12]
-        logger.info("UAT OTP generated for user %s: %s", identifier, otp)
+        current_app.logger.info(
+            "UAT OTP generated for user %s: %s",
+            identifier,
+            otp,
+        )
         return True
     if provider == "unconfigured":
         return False

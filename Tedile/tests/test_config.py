@@ -16,9 +16,15 @@ def load_config(monkeypatch, app_env, **values):
 
 
 def test_development_environment_uses_development_config(monkeypatch):
-    config = load_config(monkeypatch, "development")
+    config = load_config(monkeypatch, "development", OTP_REQUIRED="true", OTP_DELIVERY_PROVIDER="console")
 
     assert isinstance(config.DevelopmentConfig(), config.DevelopmentConfig)
+
+
+def test_development_console_otp_is_accepted(monkeypatch):
+    config = load_config(monkeypatch, "development", OTP_REQUIRED="true", OTP_DELIVERY_PROVIDER="console")
+
+    assert config.DevelopmentConfig().OTP_DELIVERY_PROVIDER == "console"
 
 
 def test_uat_environment_uses_uat_config(monkeypatch):
@@ -28,11 +34,27 @@ def test_uat_environment_uses_uat_config(monkeypatch):
         DATABASE_URL="postgresql://uat-host/tedile_uat",
         SECRET_KEY="uat-secret",
         ENCRYPTION_KEY="invalid-for-config-only",
+        OTP_REQUIRED="true",
+        OTP_DELIVERY_PROVIDER="console",
     )
 
     assert config.UATConfig().DEBUG is False
     assert config.UATConfig().TESTING is False
     assert config.UATConfig().SESSION_COOKIE_SECURE is True
+
+
+def test_uat_console_otp_is_accepted(monkeypatch):
+    config = load_config(
+        monkeypatch,
+        "uat",
+        DATABASE_URL="postgresql://uat-host/tedile_uat",
+        SECRET_KEY="uat-secret",
+        ENCRYPTION_KEY="invalid-for-config-only",
+        OTP_REQUIRED="true",
+        OTP_DELIVERY_PROVIDER="console",
+    )
+
+    assert config.UATConfig().OTP_DELIVERY_PROVIDER == "console"
 
 
 def test_production_environment_uses_production_config(monkeypatch):

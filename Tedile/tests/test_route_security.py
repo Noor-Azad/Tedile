@@ -309,10 +309,32 @@ def test_role_boundaries_reject_wrong_dashboard(app, client):
     set_session(client, customer)
     assert client.get("/provider/dashboard").status_code == 403
     assert client.get("/admin/dashboard").status_code == 403
-
     set_session(client, provider_user)
     assert client.get("/customer/dashboard").status_code == 403
     assert client.get("/admin/dashboard").status_code == 403
+
+
+def test_customer_dashboard_contains_service_catalogue_and_reuses_services_api(app, client):
+    with app.app_context():
+        account = user("catalogue@example.com", "customer")
+        db.session.add(Service(name="Electrician", slug="electrician", display_order=1))
+        db.session.commit()
+    set_session(client, account)
+
+    dashboard = client.get("/customer/dashboard")
+    assert dashboard.status_code == 200
+    assert b'id="services"' in dashboard.data
+    assert b'id="popular-services"' in dashboard.data
+    assert b'id="service-groups"' in dashboard.data
+    assert b'href="#services"' in dashboard.data
+
+    services = client.get("/api/services")
+    assert services.status_code == 200
+    assert services.get_json()["data"][0]["slug"] == "electrician"
+
+
+def test_customer_dashboard_remains_protected(client):
+    assert client.get("/customer/dashboard").status_code == 302
 
 
 def test_customer_cannot_view_another_customers_bookings_or_contact(app, client):

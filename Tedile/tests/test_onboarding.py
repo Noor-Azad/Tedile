@@ -43,8 +43,8 @@ def reset_limiter():
     limiter.reset()
 
 
-def begin_login(client, email="onboard@example.com"):
-    return client.post("/login", data={"csrf_token": csrf_token(client), "email": email, "password": "correct-password"})
+def begin_login(client, email="onboard@example.com", role="customer"):
+    return client.post("/signup", data={"csrf_token": csrf_token(client), "email": email, "name": "Onboard User", "password": "correct-password", "phone": "9876543210", "role": role})
 
 
 def test_homepage_is_auth_only(client):
@@ -56,8 +56,6 @@ def test_homepage_is_auth_only(client):
 
 
 def test_otp_is_server_verified_expiring_and_not_in_session_or_response(app, client, monkeypatch):
-    with app.app_context():
-        make_user("onboard@example.com")
     sent = {}
     monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)
 
@@ -78,11 +76,9 @@ def test_otp_is_server_verified_expiring_and_not_in_session_or_response(app, cli
 
 
 def test_valid_otp_enters_location_then_existing_role_flow(app, client, monkeypatch):
-    with app.app_context():
-        make_user("provider-onboard@example.com", "provider")
     sent = {}
     monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)
-    begin_login(client, "provider-onboard@example.com")
+    begin_login(client, "provider-onboard@example.com", "provider")
     response = client.post("/otp/verify", data={"csrf_token": csrf_token(client), "otp": sent["otp"]})
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/onboarding/location")
@@ -90,8 +86,6 @@ def test_valid_otp_enters_location_then_existing_role_flow(app, client, monkeypa
 
 
 def test_location_grant_and_denial_continue_without_persisting_coordinates(app, client, monkeypatch):
-    with app.app_context():
-        make_user("location@example.com")
     sent = {}
     monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)
     begin_login(client, "location@example.com")
@@ -102,23 +96,80 @@ def test_location_grant_and_denial_continue_without_persisting_coordinates(app, 
         assert sess["onboarding"]["location_status"] == "granted"
         assert "latitude" not in repr(dict(sess))
     assert client.post("/onboarding/complete", data={"csrf_token": csrf_token(client)}).status_code == 302
-
-
-def test_location_denial_is_allowed(app, client, monkeypatch):
     with app.app_context():
-        make_user("denied-location@example.com")
-    sent = {}
-    monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)
-    begin_login(client, "denied-location@example.com")
-    client.post("/otp/verify", data={"csrf_token": csrf_token(client), "otp": sent["otp"]})
-    skipped = client.post("/onboarding/location/skip", headers={"X-CSRFToken": csrf_token(client)})
-    assert skipped.status_code == 200
-    assert skipped.get_json()["next"].endswith("/onboarding/permissions")
+        assert User.query.filter_by(email="location@example.com").one().onboarding_completed is True
+
+
+def test_completed_user_login_skips_otp_and_onboarding(app, client):
+    with app.app_context():
+        account = make_user("completed@example.com")
+        account.onboarding_completed = True
+        db.session.commit()
+    response = client.post("/login", data={"csrf_token": csrf_token(client), "email": "completed@example.com", "password": "correct-password"})
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/customer/dashboard")
+    assert client.get("/otp").status_code == 302
+
+
+def test_incomplete_existing_user_login_enters_location_without_otp(app, client):
+    with app.app_context():
+        make_user("legacy@example.com")
+    response = client.post("/login", data={"csrf_token": csrf_token(client), "email": "legacy@example.com", "password": "correct-password"})
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/onboarding/location")
+    with client.session_transaction() as sess:
+        assert "otp_challenge" not in sess
+
+
+def test_location_denial_stays_on_location_step(client):
+    response = client.get("/onboarding/location")
+    assert response.status_code == 302
+
+
+@pytest.mark.parametrize("payload", [
+    {},
+    {"latitude": 25.0},
+    {"longitude": 88.0},
+    {"latitude": 91.0, "longitude": 88.0},
+    {"latitude": -91.0, "longitude": 88.0},
+    {"latitude": 25.0, "longitude": 181.0},
+    {"latitude": 25.0, "longitude": -181.0},
+    {"latitude": "NaN", "longitude": 88.0},
+    {"latitude": 25.0, "longitude": "Infinity"},
+])
+def test_location_rejects_invalid_coordinates(client, payload):
+    with client.session_transaction() as sess:
+        sess["user"] = {"id": 1, "name": "Customer", "role": "customer"}
+        sess["onboarding"] = {"stage": "location"}
+    client.get("/onboarding/location")
+    response = client.post("/onboarding/location", json=payload, headers={"X-CSRFToken": csrf_token(client)})
+    assert response.status_code == 400
+
+
+def test_location_requires_authentication_and_csrf(client):
+    assert client.post("/onboarding/location", json={"latitude": 25, "longitude": 88}).status_code == 302
+    with client.session_transaction() as sess:
+        sess["user"] = {"id": 1, "name": "Customer", "role": "customer"}
+        sess["onboarding"] = {"stage": "location"}
+    client.get("/onboarding/location")
+    response = client.post("/onboarding/location", json={"latitude": 25, "longitude": 88})
+    assert response.status_code == 400
+    assert b"Missing or invalid CSRF token." in response.data
+
+
+def test_location_frontend_handles_denial_and_retry(client):
+    with client.session_transaction() as sess:
+        sess["user"] = {"id": 1, "name": "Customer", "role": "customer"}
+        sess["onboarding"] = {"stage": "location"}
+    assert client.get("/onboarding/location").status_code == 200
+    script = client.get("/static/onboarding.js").data
+    assert b"Try Again" in script
+    assert b"permission was denied" in script
+    assert b"timed out" in script
+    assert b"unavailable" in script
 
 
 def test_otp_attempts_and_resends_are_rate_limited(app, client, monkeypatch):
-    with app.app_context():
-        make_user("otp-limits@example.com")
     sent = {}
     monkeypatch.setattr("app.routes.auth.deliver_otp", lambda destination, otp: sent.update(otp=otp) or True)
     begin_login(client, "otp-limits@example.com")
@@ -132,9 +183,7 @@ def test_otp_attempts_and_resends_are_rate_limited(app, client, monkeypatch):
 
 def test_console_otp_is_only_emitted_to_server_logs(app, client, caplog):
     app.config["OTP_DELIVERY_PROVIDER"] = "console"
-    with app.app_context():
-        make_user("console-otp@example.com")
-    with caplog.at_level("INFO", logger="app.services.otp_service"):
+    with caplog.at_level("INFO", logger="app"):
         response = begin_login(client, "console-otp@example.com")
     message = next(record.getMessage() for record in caplog.records if "UAT OTP generated" in record.getMessage())
     otp = message.rsplit(": ", 1)[1]

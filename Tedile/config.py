@@ -81,11 +81,11 @@ class ProductionConfig(Config):
             raise RuntimeError("OTP_REQUIRED must be true in production.")
         if self.OTP_DELIVERY_PROVIDER in ("", "unconfigured"):
             raise RuntimeError(
-                "OTP_DELIVERY_PROVIDER must be configured in UAT or production."
+                "OTP_DELIVERY_PROVIDER must be configured in production."
             )
-        if self.OTP_DELIVERY_PROVIDER == "console":
+        if os.getenv("APP_ENV", "development").lower() == "production" and self.OTP_DELIVERY_PROVIDER == "console":
             raise RuntimeError(
-                "OTP_DELIVERY_PROVIDER=console is not allowed in UAT or production."
+                "OTP_DELIVERY_PROVIDER=console is not allowed in production."
             )
 
 
