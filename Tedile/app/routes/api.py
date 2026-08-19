@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timezone
+import math
 
 from flask import Blueprint, current_app, jsonify, request, session
 
@@ -16,6 +17,34 @@ from app.services.search_service import search_providers
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
+def _query_float(name, minimum=None, maximum=None):
+    value = request.args.get(name)
+    if value in (None, ""):
+        return None, None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None, f"Invalid {name}"
+    if not math.isfinite(parsed) or (minimum is not None and parsed < minimum) or (
+        maximum is not None and parsed > maximum
+    ):
+        return None, f"Invalid {name}"
+    return parsed, None
+
+
+def _query_int(name, minimum=None, maximum=None, default=None):
+    value = request.args.get(name)
+    if value in (None, ""):
+        return default, None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None, f"Invalid {name}"
+    if (minimum is not None and parsed < minimum) or (maximum is not None and parsed > maximum):
+        return None, f"Invalid {name}"
+    return parsed, None
+
+
 @api_bp.route("/search/geocode")
 def geocode():
     query = request.args.get("q", "")
@@ -27,15 +56,36 @@ def geocode():
 
 @api_bp.route("/search/providers")
 def search():
-    def _float(name):
-        value = request.args.get(name)
-        return float(value) if value not in (None, "") else None
+    latitude, error = _query_float("latitude", -90, 90)
+    if error:
+        return jsonify({"error": error}), 400
+    longitude, error = _query_float("longitude", -180, 180)
+    if error:
+        return jsonify({"error": error}), 400
+    if (latitude is None) != (longitude is None):
+        return jsonify({"error": "Latitude and longitude must be provided together"}), 400
 
-    latitude = _float("latitude")
-    longitude = _float("longitude")
-    radius = request.args.get("radius", type=float) or current_app.config.get("DEFAULT_SEARCH_RADIUS_KM", 50)
-    limit = min(max(request.args.get("limit", type=int) or 20, 1), 50)
-    offset = max(request.args.get("offset", type=int) or 0, 0)
+    radius, error = _query_float("radius", 0)
+    if error:
+        return jsonify({"error": error}), 400
+    if radius in (None, 0):
+        radius = current_app.config.get("DEFAULT_SEARCH_RADIUS_KM", 50)
+
+    limit, error = _query_int("limit", 1, 50, 20)
+    if error:
+        return jsonify({"error": error}), 400
+    offset, error = _query_int("offset", 0, 1_000_000, 0)
+    if error:
+        return jsonify({"error": error}), 400
+
+    min_price, error = _query_float("min_price", 0)
+    if error:
+        return jsonify({"error": error}), 400
+    max_price, error = _query_float("max_price", 0)
+    if error:
+        return jsonify({"error": error}), 400
+    if min_price is not None and max_price is not None and min_price > max_price:
+        return jsonify({"error": "min_price cannot exceed max_price"}), 400
 
     results, total = search_providers(
         latitude=latitude,
@@ -43,8 +93,8 @@ def search():
         radius_km=radius,
         service_slug=request.args.get("service"),
         keyword=request.args.get("keyword"),
-        min_price=_float("min_price"),
-        max_price=_float("max_price"),
+        min_price=min_price,
+        max_price=max_price,
         verified_only=request.args.get("verified_only") in ("1", "true", "True"),
         sort=request.args.get("sort", "distance"),
         limit=limit,

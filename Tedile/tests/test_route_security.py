@@ -139,6 +139,109 @@ def test_booking_response_excludes_internal_ids(app, client):
         assert forbidden not in payload
 
 
+@pytest.mark.parametrize(
+    "query",
+    [
+        {"latitude": "not-a-number"},
+        {"longitude": "not-a-number"},
+        {"radius": "not-a-number"},
+        {"radius": "-1"},
+        {"radius": "NaN"},
+        {"radius": "Infinity"},
+        {"latitude": "NaN", "longitude": "0"},
+        {"latitude": "Infinity", "longitude": "0"},
+        {"latitude": "0", "longitude": "-Infinity"},
+        {"limit": "not-an-integer"},
+        {"offset": "-1"},
+    ],
+)
+def test_provider_search_rejects_invalid_numeric_input(client, query):
+    response = client.get("/api/search/providers", query_string=query)
+    assert response.status_code == 400
+    assert response.status_code != 500
+    assert b"Traceback" not in response.data
+    assert b"ValueError" not in response.data
+
+
+def test_provider_search_accepts_existing_valid_request(client):
+    response = client.get(
+        "/api/search/providers",
+        query_string={"latitude": "0", "longitude": "0", "radius": "50", "limit": "20", "offset": "0"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["status"] is True
+
+
+def test_provider_search_preserves_radius_compatibility(app, client, monkeypatch):
+    captured = []
+
+    def fake_search_providers(**kwargs):
+        captured.append(kwargs["radius_km"])
+        return [], 0
+
+    monkeypatch.setattr("app.routes.api.search_providers", fake_search_providers)
+
+    assert client.get("/api/search/providers").status_code == 200
+    assert captured[-1] == app.config["DEFAULT_SEARCH_RADIUS_KM"]
+
+    assert client.get("/api/search/providers?radius=0").status_code == 200
+    assert captured[-1] == app.config["DEFAULT_SEARCH_RADIUS_KM"]
+
+    assert client.get("/api/search/providers?radius=25").status_code == 200
+    assert captured[-1] == 25
+
+    assert client.get("/api/search/providers?radius=501").status_code == 200
+    assert captured[-1] == 501
+
+
+def test_booking_rejects_malformed_datetime_and_oversized_notes(app, client):
+    with app.app_context():
+        customer = user("validation-customer@example.com", "customer")
+        record = provider("VALIDATION-PROVIDER")
+        service = service_for(record)
+        profile_code = record.profile_code
+        service_slug = service.slug
+
+    token = set_session(client, customer)
+    invalid_datetime = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "scheduled_at": "not-a-datetime",
+        },
+    )
+    assert invalid_datetime.status_code == 400
+    assert b"Invalid scheduled_at" in invalid_datetime.data
+    assert b"Traceback" not in invalid_datetime.data
+    assert b"ValueError" not in invalid_datetime.data
+
+    oversized_notes = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "notes": "x" * 5001,
+        },
+    )
+    assert oversized_notes.status_code == 400
+    assert b"Notes are too long" in oversized_notes.data
+
+    valid = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "scheduled_at": "2026-08-20T10:30:00",
+            "notes": "Please call first",
+        },
+    )
+    assert valid.status_code == 201
+
+
 def _booking_setup(app):
     with app.app_context():
         customer = user("booking-active-customer@example.com", "customer")

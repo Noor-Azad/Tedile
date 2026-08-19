@@ -51,7 +51,18 @@ def create_booking():
     service_id = request.form.get("service_id", type=int)
     notes = request.form.get("notes", "")
     scheduled_at_value = request.form.get("scheduled_at") or None
-    scheduled_at = datetime.fromisoformat(scheduled_at_value) if scheduled_at_value else None
+    if len(profile_code) > 64 or len(service_slug) > 160:
+        return jsonify({"error": "Invalid booking input"}), 400
+    if request.form.get("service_id") not in (None, "") and service_id is None:
+        return jsonify({"error": "Invalid service_id"}), 400
+    if service_id is not None and service_id <= 0:
+        return jsonify({"error": "Invalid service_id"}), 400
+    if len(notes) > 5000:
+        return jsonify({"error": "Notes are too long"}), 400
+    try:
+        scheduled_at = datetime.fromisoformat(scheduled_at_value) if scheduled_at_value else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid scheduled_at"}), 400
 
     provider = Provider.query.filter_by(profile_code=profile_code).first()
     if not provider or not provider.is_active:
