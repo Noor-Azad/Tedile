@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile | My Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="marketplace-page">
+    <header class="site-header">
+      <a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a>
+      <div class="header-actions">
+        <a class="button button-quiet" href="{{ url_for('auth.login_page') }}">Back</a>
+        <form method="POST" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="button button-quiet" type="submit">Log out</button>
+        </form>
+      </div>
+    </header>
+    <main class="dashboard-shell">
+      <section class="content-section">
+        <div class="section-heading">
+          <p class="eyebrow">ACCOUNT</p>
+          <h1>My Profile</h1>
+          <p>Your Tedile account details.</p>
+        </div>
+        <div class="form-card">
+          <p><strong>Name</strong><br />{{ user.name }}</p>
+          <p><strong>Email</strong><br />{{ user.email }}</p>
+          <p><strong>Phone</strong><br />{{ user.phone or 'Not provided' }}</p>
+          <p><strong>Role</strong><br />{{ user.role }}</p>
+          <p><strong>Onboarding status</strong><br />{{ 'Complete' if user.onboarding_completed else 'Incomplete' }}</p>
+          <p><strong>Account created</strong><br />{{ user.created_at }}</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

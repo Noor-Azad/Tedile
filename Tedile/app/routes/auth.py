@@ -341,6 +341,18 @@ def session_info():
     return jsonify({"authenticated": True, "user": user})
 
 
+@auth_bp.route("/profile")
+def profile_page():
+    session_user = session.get("user")
+    if not session_user:
+        return redirect(url_for("auth.login_page"))
+    user = User.query.get(session_user.get("id"))
+    if not user:
+        session.clear()
+        return redirect(url_for("auth.login_page"))
+    return render_template("profile.html", user=user)
+
+
 @auth_bp.route("/providers/<profile_code>")
 def provider_profile_page(profile_code):
     return render_template("provider_profile.html", profile_code=profile_code)
