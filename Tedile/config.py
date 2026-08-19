@@ -39,6 +39,8 @@ class Config:
 
     # Default search radius (km) used when a client omits it.
     DEFAULT_SEARCH_RADIUS_KM = int(os.getenv("DEFAULT_SEARCH_RADIUS_KM", "50"))
+    RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
+    RATELIMIT_HEADERS_ENABLED = False
 
 
 class DevelopmentConfig(Config):

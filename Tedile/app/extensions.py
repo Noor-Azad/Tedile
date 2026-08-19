@@ -42,5 +42,9 @@ except ModuleNotFoundError:
         def init_app(self, app, db, **kwargs):
             return None
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 # compare_type lets autogenerate detect column type changes, not just add/drop.
 migrate = Migrate(compare_type=True)
+limiter = Limiter(key_func=get_remote_address)

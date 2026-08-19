@@ -1,9 +1,15 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
+from app.extensions import limiter
 from app.services.auth_service import authenticate_user, register_user
 from app.security import csrf_protect
 
 auth_bp = Blueprint("auth", __name__)
+
+
+def _login_email_key():
+    email = (request.form.get("email", "") or "").strip().lower()
+    return f"{request.remote_addr or 'unknown'}:{email}"
 
 
 def _redirect_for_role(role: str):
@@ -24,6 +30,8 @@ def login_page():
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 @csrf_protect
+@limiter.limit("10 per minute", methods=["POST"])
+@limiter.limit("5 per minute", methods=["POST"], key_func=_login_email_key)
 def login():
     if request.method == "GET":
         return render_template("index.html")

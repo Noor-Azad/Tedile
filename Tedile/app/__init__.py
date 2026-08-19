@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, redirect, request
 from sqlalchemy import text
 
-from app.extensions import db, migrate
+from app.extensions import db, limiter, migrate
 from app.security import get_csrf_token
 from config import DevelopmentConfig, ProductionConfig, UATConfig
 
@@ -36,6 +36,7 @@ def create_app():
 
     db.init_app(app)
     migrate.init_app(app, db)
+    limiter.init_app(app)
 
     from app.models.user import User  # noqa: F401
     from app.models.provider import Provider  # noqa: F401
