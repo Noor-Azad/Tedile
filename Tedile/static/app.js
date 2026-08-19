@@ -5,8 +5,10 @@ async function loadServices() {
   const response = await fetch('/api/services');
   const payload = await response.json();
 
-  select.innerHTML = '<option value="">All services</option>' +
-    payload.data.map(service => `<option value="${service.slug}">${service.name}</option>`).join('');
+  select.replaceChildren(new Option('All services', ''));
+  payload.data.forEach(service => {
+    select.appendChild(new Option(service.name, service.slug));
+  });
 }
 
 async function searchProviders() {
@@ -32,14 +34,26 @@ function renderProviders(providers) {
     return;
   }
 
-  container.innerHTML = providers.map(provider => `
-    <div class="provider-card">
-      <h3>${provider.name}</h3>
-      <p>${provider.city || ''}${provider.state ? ', ' + provider.state : ''}</p>
-      <p>Rating: ${provider.rating ?? 'N/A'} · Rate: ${provider.hourly_rate ?? 'N/A'}</p>
-      <span class="badge ${provider.verified ? 'verified' : ''}">${provider.verified ? 'Verified' : 'Unverified'}</span>
-    </div>
-  `).join('');
+  container.replaceChildren(...providers.map(provider => {
+    const card = document.createElement('div');
+    card.className = 'provider-card';
+
+    const name = document.createElement('h3');
+    name.textContent = provider.name;
+
+    const location = document.createElement('p');
+    location.textContent = `${provider.city || ''}${provider.state ? ', ' + provider.state : ''}`;
+
+    const details = document.createElement('p');
+    details.textContent = `Rating: ${provider.rating ?? 'N/A'} · Rate: ${provider.hourly_rate ?? 'N/A'}`;
+
+    const verification = document.createElement('span');
+    verification.className = `badge${provider.verified ? ' verified' : ''}`;
+    verification.textContent = provider.verified ? 'Verified' : 'Unverified';
+
+    card.append(name, location, details, verification);
+    return card;
+  }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

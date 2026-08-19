@@ -57,8 +57,19 @@ function renderSkeletons() {
   if (target) target.innerHTML = Array.from({ length: 4 }, () => '<div class="provider-card skeleton-card"><div class="skeleton-photo"></div><div class="skeleton-line wide"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>').join('');
 }
 
+function attachImageErrorFallbacks(root) {
+  root.querySelectorAll('[data-image-fallback]').forEach((image) => {
+    if (image.dataset.imageFallbackBound) return;
+    image.dataset.imageFallbackBound = 'true';
+    image.addEventListener('error', () => {
+      image.hidden = true;
+      if (image.nextElementSibling) image.nextElementSibling.hidden = false;
+    }, { once: true });
+  });
+}
+
 function providerCard(provider) {
-  const photo = provider.profile_photo_url ? `<img loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" class="provider-photo" onerror="this.hidden=true;this.nextElementSibling.hidden=false" /><div class="photo-fallback" hidden aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>` : `<div class="photo-fallback" aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>`;
+  const photo = provider.profile_photo_url ? `<img loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" class="provider-photo" data-image-fallback /><div class="photo-fallback" hidden aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>` : `<div class="photo-fallback" aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>`;
   return `<article class="provider-card"><div class="provider-card-top">${photo}<span class="availability ${provider.availability === 'available' ? 'is-available' : ''}">${escapeHtml(provider.availability || 'offline')}</span></div><div class="provider-card-body"><div class="provider-name-row"><h3>${escapeHtml(provider.name)}</h3>${provider.verified ? '<span class="verified-mark" title="Verified provider">✓</span>' : ''}</div><p class="provider-location">${escapeHtml([provider.city, provider.state].filter(Boolean).join(', '))}</p><div class="provider-stats"><span>★ ${escapeHtml(provider.rating || '—')}</span><span>${escapeHtml(provider.reviews_count || 0)} reviews</span></div><div class="provider-meta"><span>${escapeHtml(provider.experience_years || 0)} yrs experience</span><span>${escapeHtml(provider.jobs_completed || 0)} jobs</span></div><div class="provider-card-footer"><strong>${provider.hourly_rate != null ? `₹${escapeHtml(provider.hourly_rate)}/hr` : 'Rate on request'}</strong><span class="distance-badge">${escapeHtml(provider.distance_bucket || 'Nearby')}</span></div><a class="button button-secondary full-button" href="/providers/${encodeURIComponent(provider.id)}">View profile</a></div></article>`;
 }
 
@@ -67,6 +78,7 @@ function renderResults(providers, append = false) {
   if (!target) return;
   const html = providers.map(providerCard).join('');
   if (append) target.insertAdjacentHTML('beforeend', html); else target.innerHTML = html || '<div class="empty-state wide-empty"><span class="empty-mark">⌕</span><h3>No providers found yet.</h3><p>Try another service, location, or a broader search.</p></div>';
+  attachImageErrorFallbacks(target);
 }
 
 async function searchProviders(reset = false) {
@@ -106,8 +118,9 @@ async function loadProfile() {
     const response = await fetch(`/api/providers/${encodeURIComponent(target.dataset.profileCode)}`);
     if (!response.ok) throw new Error('Provider profile not found.');
     const provider = await response.json();
-    const photo = provider.profile_photo_url ? `<img class="profile-photo" loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" onerror="this.hidden=true" />` : '<div class="profile-photo photo-fallback">?</div>';
+    const photo = provider.profile_photo_url ? `<img class="profile-photo" loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" data-image-fallback />` : '<div class="profile-photo photo-fallback">?</div>';
     target.innerHTML = `<div class="profile-card"><div class="profile-visual">${photo}</div><div class="profile-content"><p class="eyebrow">LOCAL PROFESSIONAL</p><h1>${escapeHtml(provider.name)} ${provider.verified ? '<span class="verified-mark">✓</span>' : ''}</h1><p class="provider-location">${escapeHtml([provider.city, provider.state].filter(Boolean).join(', '))}</p><div class="profile-stats"><span>★ ${escapeHtml(provider.rating || '—')} · ${escapeHtml(provider.reviews_count || 0)} reviews</span><span>${escapeHtml(provider.experience_years || 0)} years experience</span><span>${escapeHtml(provider.jobs_completed || 0)} jobs completed</span></div><div class="profile-rate">${provider.hourly_rate != null ? `₹${escapeHtml(provider.hourly_rate)} / hour` : 'Rate on request'}</div><button class="button button-primary" type="button" id="start-booking">Request this provider</button><p class="profile-note">Contact details are shared only after an authorized booking is confirmed.</p></div></div><div class="booking-panel" id="booking-panel" hidden><p class="eyebrow">BOOK A VISIT</p><h2>Tell us when you need help.</h2><form id="booking-form"><label>Date and time<input type="datetime-local" name="scheduled_at" required /></label><label>Notes<textarea name="notes" rows="4" placeholder="Add helpful details about the job"></textarea></label><input type="hidden" name="provider_profile_code" value="${escapeHtml(provider.id)}" /><label>Service<select name="service_slug" id="booking-service" required><option value="">Loading services…</option></select></label><button class="button button-primary" type="submit">Send booking request</button><p class="form-status" id="booking-status"></p></form></div>`;
+    attachImageErrorFallbacks(target);
     const bookingService = document.getElementById('booking-service');
     if (bookingService) bookingService.innerHTML = state.services.filter((service) => service.is_active !== false).map((service) => `<option value="${escapeHtml(service.slug)}">${escapeHtml(service.name)}</option>`).join('');
     document.getElementById('start-booking')?.addEventListener('click', () => { document.getElementById('booking-panel').hidden = false; });

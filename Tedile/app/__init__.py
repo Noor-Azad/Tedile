@@ -1,9 +1,9 @@
 import os
 
-from flask import Flask, jsonify, redirect, request
+from flask import Flask, jsonify, redirect, request, session
 from sqlalchemy import text
 
-from app.extensions import db, migrate
+from app.extensions import db, limiter, migrate
 from app.security import get_csrf_token
 from config import DevelopmentConfig, ProductionConfig, UATConfig
 
@@ -31,11 +31,15 @@ def create_app():
 
     app.config.from_object(config_obj)
     app.config.from_prefixed_env()
+    app.config["APP_ENV"] = app_env
+    if not app.config.get("OTP_REQUIRED", True):
+        raise RuntimeError("OTP_REQUIRED must be true in all Tedile environments.")
     app.secret_key = app.config["SECRET_KEY"]
     app.context_processor(lambda: {"csrf_token": get_csrf_token})
 
     db.init_app(app)
     migrate.init_app(app, db)
+    limiter.init_app(app)
 
     from app.models.user import User  # noqa: F401
     from app.models.provider import Provider  # noqa: F401
@@ -58,6 +62,49 @@ def create_app():
     app.register_blueprint(provider_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self'; "
+            "img-src 'self' https: data:; connect-src 'self'; font-src 'self'; "
+            "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+        )
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
+
+        sensitive_paths = (
+            "/customer/dashboard",
+            "/customer/bookings",
+            "/customer/providers",
+            "/provider/dashboard",
+            "/provider/availability",
+            "/provider/bookings",
+            "/admin/dashboard",
+            "/admin/providers",
+            "/api/session",
+            "/api/admin",
+            "/login",
+            "/signup",
+            "/otp",
+            "/onboarding",
+        )
+        if session.get("user") and any(
+            request.path == path or request.path.startswith(f"{path}/")
+            for path in sensitive_paths
+        ):
+            response.headers["Cache-Control"] = "no-store"
+        elif session.get("user") and request.method in {"POST", "PATCH", "PUT", "DELETE"} and (
+            request.path == "/api/providers" or request.path.startswith("/api/providers/")
+        ):
+            response.headers["Cache-Control"] = "no-store"
+
+        return response
 
     @app.before_request
     def enforce_https():

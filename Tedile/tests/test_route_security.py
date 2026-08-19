@@ -139,6 +139,168 @@ def test_booking_response_excludes_internal_ids(app, client):
         assert forbidden not in payload
 
 
+@pytest.mark.parametrize(
+    "query",
+    [
+        {"latitude": "not-a-number"},
+        {"longitude": "not-a-number"},
+        {"radius": "not-a-number"},
+        {"radius": "-1"},
+        {"radius": "NaN"},
+        {"radius": "Infinity"},
+        {"latitude": "NaN", "longitude": "0"},
+        {"latitude": "Infinity", "longitude": "0"},
+        {"latitude": "0", "longitude": "-Infinity"},
+        {"limit": "not-an-integer"},
+        {"offset": "-1"},
+    ],
+)
+def test_provider_search_rejects_invalid_numeric_input(client, query):
+    response = client.get("/api/search/providers", query_string=query)
+    assert response.status_code == 400
+    assert response.status_code != 500
+    assert b"Traceback" not in response.data
+    assert b"ValueError" not in response.data
+
+
+def test_provider_search_accepts_existing_valid_request(client):
+    response = client.get(
+        "/api/search/providers",
+        query_string={"latitude": "0", "longitude": "0", "radius": "50", "limit": "20", "offset": "0"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["status"] is True
+
+
+def test_provider_search_preserves_radius_compatibility(app, client, monkeypatch):
+    captured = []
+
+    def fake_search_providers(**kwargs):
+        captured.append(kwargs["radius_km"])
+        return [], 0
+
+    monkeypatch.setattr("app.routes.api.search_providers", fake_search_providers)
+
+    assert client.get("/api/search/providers").status_code == 200
+    assert captured[-1] == app.config["DEFAULT_SEARCH_RADIUS_KM"]
+
+    assert client.get("/api/search/providers?radius=0").status_code == 200
+    assert captured[-1] == app.config["DEFAULT_SEARCH_RADIUS_KM"]
+
+    assert client.get("/api/search/providers?radius=25").status_code == 200
+    assert captured[-1] == 25
+
+    assert client.get("/api/search/providers?radius=501").status_code == 200
+    assert captured[-1] == 501
+
+
+def test_booking_rejects_malformed_datetime_and_oversized_notes(app, client):
+    with app.app_context():
+        customer = user("validation-customer@example.com", "customer")
+        record = provider("VALIDATION-PROVIDER")
+        service = service_for(record)
+        profile_code = record.profile_code
+        service_slug = service.slug
+
+    token = set_session(client, customer)
+    invalid_datetime = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "scheduled_at": "not-a-datetime",
+        },
+    )
+    assert invalid_datetime.status_code == 400
+    assert b"Invalid scheduled_at" in invalid_datetime.data
+    assert b"Traceback" not in invalid_datetime.data
+    assert b"ValueError" not in invalid_datetime.data
+
+    oversized_notes = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "notes": "x" * 5001,
+        },
+    )
+    assert oversized_notes.status_code == 400
+    assert b"Notes are too long" in oversized_notes.data
+
+    valid = client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+            "scheduled_at": "2026-08-20T10:30:00",
+            "notes": "Please call first",
+        },
+    )
+    assert valid.status_code == 201
+
+
+def _booking_setup(app):
+    with app.app_context():
+        customer = user("booking-active-customer@example.com", "customer")
+        record = provider("BOOKING-ACTIVE")
+        service = service_for(record)
+        relation = ProviderService.query.filter_by(
+            provider_id=record.id, service_id=service.id
+        ).one()
+        ids = (customer, record, service, relation)
+    return ids
+
+
+def _create_booking(client, customer, profile_code, service_slug, token):
+    set_session(client, customer)
+    return client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+        },
+    )
+
+
+def test_booking_requires_all_related_records_to_be_active(app, client):
+    customer, record, service, relation = _booking_setup(app)
+    token = set_session(client, customer)
+    profile_code = record.profile_code
+    service_slug = service.slug
+    provider_id = record.id
+    service_id = service.id
+    relation_id = relation.id
+
+    response = _create_booking(client, customer, profile_code, service_slug, token)
+    assert response.status_code == 201
+
+    with app.app_context():
+        record = db.session.get(Provider, provider_id)
+        record.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 404
+
+    with app.app_context():
+        record = db.session.get(Provider, provider_id)
+        record.is_active = True
+        service = db.session.get(Service, service_id)
+        service.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 404
+
+    with app.app_context():
+        service = db.session.get(Service, service_id)
+        service.is_active = True
+        relation = db.session.get(ProviderService, relation_id)
+        relation.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 400
+
+
 def test_role_boundaries_reject_wrong_dashboard(app, client):
     with app.app_context():
         customer = user("customer@example.com", "customer")
@@ -147,10 +309,134 @@ def test_role_boundaries_reject_wrong_dashboard(app, client):
     set_session(client, customer)
     assert client.get("/provider/dashboard").status_code == 403
     assert client.get("/admin/dashboard").status_code == 403
-
     set_session(client, provider_user)
     assert client.get("/customer/dashboard").status_code == 403
     assert client.get("/admin/dashboard").status_code == 403
+
+
+def test_customer_dashboard_contains_service_catalogue_and_reuses_services_api(app, client):
+    with app.app_context():
+        account = user("catalogue@example.com", "customer")
+        db.session.add(Service(name="Electrician", slug="electrician", display_order=1))
+        db.session.commit()
+    set_session(client, account)
+
+    dashboard = client.get("/customer/dashboard")
+    assert dashboard.status_code == 200
+    assert b'id="services"' in dashboard.data
+    assert b'id="popular-services"' in dashboard.data
+    assert b'id="service-groups"' in dashboard.data
+    assert b'href="#services"' in dashboard.data
+
+    services = client.get("/api/services")
+    assert services.status_code == 200
+    assert services.get_json()["data"][0]["slug"] == "electrician"
+
+
+def test_customer_dashboard_remains_protected(client):
+    assert client.get("/customer/dashboard").status_code == 302
+
+
+def test_customer_cannot_view_another_customers_bookings_or_contact(app, client):
+    with app.app_context():
+        customer_a = user("customer-a@example.com", "customer")
+        customer_b = user("customer-b@example.com", "customer")
+        record = provider("CUSTOMER-ISOLATION")
+        service = service_for(record)
+        booking_a = Booking(customer_id=customer_a.id, provider_id=record.id, service_id=service.id)
+        booking_b = Booking(
+            customer_id=customer_b.id,
+            provider_id=record.id,
+            service_id=service.id,
+            status="confirmed",
+        )
+        db.session.add_all([booking_a, booking_b])
+        db.session.commit()
+        reference_a = booking_a.public_reference
+        reference_b = booking_b.public_reference
+        profile_code = record.profile_code
+        booking_b_id = booking_b.id
+        customer_a_session = customer_a.to_session_dict()
+
+    token = csrf_token(client)
+    with client.session_transaction() as sess:
+        sess["user"] = customer_a_session
+    dashboard = client.get("/customer/dashboard")
+    assert dashboard.status_code == 200
+    assert reference_a.encode() in dashboard.data
+    assert reference_b.encode() not in dashboard.data
+
+    contact = client.get(f"/customer/providers/{profile_code}/contact")
+    assert contact.status_code == 403
+
+    assert client.post(f"/customer/bookings/{reference_b}/cancel").status_code == 404
+    with app.app_context():
+        assert db.session.get(Booking, booking_b_id).status == "confirmed"
+
+
+def test_provider_cannot_access_or_modify_another_providers_resources(app, client):
+    with app.app_context():
+        provider_user_a = user("provider-a-isolation@example.com", "provider")
+        provider_user_b = user("provider-b-isolation@example.com", "provider")
+        provider("PROVIDER-ISOLATION-A", user_id=provider_user_a.id)
+        provider_b = provider("PROVIDER-ISOLATION-B", user_id=provider_user_b.id)
+        service = service_for(provider_b)
+        customer = user("provider-isolation-customer@example.com", "customer")
+        booking = Booking(customer_id=customer.id, provider_id=provider_b.id, service_id=service.id)
+        db.session.add(booking)
+        db.session.commit()
+        provider_b_id = provider_b.id
+        booking_id = booking.id
+        booking_reference = booking.public_reference
+        service_slug = service.slug
+        provider_b_profile_code = provider_b.profile_code
+        provider_a_session = provider_user_a.to_session_dict()
+
+    token = csrf_token(client)
+    with client.session_transaction() as sess:
+        sess["user"] = provider_a_session
+    assert client.get("/provider/dashboard").status_code == 200
+    assert booking_reference.encode() not in client.get("/provider/dashboard").data
+
+    response = client.patch(
+        f"/api/providers/{provider_b_profile_code}",
+        json={"city": "Unauthorized"},
+        headers={"X-CSRFToken": token},
+    )
+    assert response.status_code == 403
+
+    response = client.post(
+        f"/api/providers/{provider_b_profile_code}/services",
+        json={"service_slug": service_slug},
+        headers={"X-CSRFToken": token},
+    )
+    assert response.status_code == 403
+
+    response = client.delete(
+        f"/api/providers/{provider_b_profile_code}/services/{service_slug}",
+        headers={"X-CSRFToken": token},
+    )
+    assert response.status_code == 403
+
+    response = client.post(
+        f"/provider/bookings/{booking_reference}/status",
+        data={"csrf_token": token, "status": "confirmed"},
+    )
+    assert response.status_code == 302
+
+    response = client.post(
+        "/provider/availability",
+        data={"csrf_token": token, "availability": "busy"},
+    )
+    assert response.status_code == 200
+    with app.app_context():
+        assert db.session.get(Provider, provider_b_id).availability == "available"
+        assert db.session.get(Booking, booking_id).status == "pending"
+
+
+def test_unauthenticated_users_cannot_access_admin_api(client):
+    assert client.get("/admin/dashboard").status_code == 302
+    assert client.post("/api/admin/services").status_code == 302
 
 
 def test_csrf_required_for_signup_and_login(client):

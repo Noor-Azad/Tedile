@@ -15,6 +15,7 @@ class User(db.Model):
     role = db.Column(db.String(40), nullable=False, default="customer")  # customer | provider | admin
     name = db.Column(db.String(255), nullable=False)
     phone = db.Column(EncryptedString())  # encrypted at rest; private field
+    onboarding_completed = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def set_password(self, raw_password: str) -> None:
