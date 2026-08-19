@@ -14,6 +14,11 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; "
+    "img-src 'self' https: data:; connect-src 'self'; font-src 'self'; "
+    "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+)
 
 
 @pytest.fixture
@@ -55,15 +60,30 @@ def login_as(client, account):
 def test_html_response_has_low_risk_security_headers(client):
     response = client.get("/")
     assert {name: response.headers[name] for name in SECURITY_HEADERS} == SECURITY_HEADERS
+    assert response.headers["Content-Security-Policy"] == CSP
 
 
 def test_api_response_has_low_risk_security_headers(client):
     response = client.get("/api/session")
     assert response.status_code == 401
     assert {name: response.headers[name] for name in SECURITY_HEADERS} == SECURITY_HEADERS
-    assert "Content-Security-Policy" not in response.headers
+    assert response.headers["Content-Security-Policy"] == CSP
+    assert "unsafe-inline" not in response.headers["Content-Security-Policy"]
+    assert "unsafe-eval" not in response.headers["Content-Security-Policy"]
     assert "Strict-Transport-Security" not in response.headers
     assert "Cross-Origin-Resource-Policy" not in response.headers
+
+
+def test_csp_contains_required_directives(client):
+    policy = client.get("/").headers["Content-Security-Policy"]
+    directives = {directive.split()[0]: directive for directive in policy.split("; ")}
+    assert directives["script-src"] == "script-src 'self'"
+    assert directives["style-src"] == "style-src 'self'"
+    assert directives["img-src"] == "img-src 'self' https: data:"
+    assert directives["connect-src"] == "connect-src 'self'"
+    assert directives["object-src"] == "object-src 'none'"
+    assert directives["frame-ancestors"] == "frame-ancestors 'none'"
+    assert directives["form-action"] == "form-action 'self'"
 
 
 def test_public_provider_profile_is_cacheable_for_anonymous_and_authenticated_users(app, client):
@@ -139,7 +159,7 @@ def test_public_static_resource_retains_existing_cache_behavior(client):
     response = client.get("/static/styles.css")
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-cache"
-    assert "Content-Security-Policy" not in response.headers
+    assert response.headers["Content-Security-Policy"] == CSP
 
 
 def test_health_behavior_and_security_headers_are_preserved(client):
@@ -147,4 +167,5 @@ def test_health_behavior_and_security_headers_are_preserved(client):
     assert response.status_code in (200, 503)
     assert response.get_json()["app"] == "Tedile"
     assert {name: response.headers[name] for name in SECURITY_HEADERS} == SECURITY_HEADERS
+    assert response.headers["Content-Security-Policy"] == CSP
     assert "Cache-Control" not in response.headers
