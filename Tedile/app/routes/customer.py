@@ -54,15 +54,15 @@ def create_booking():
     scheduled_at = datetime.fromisoformat(scheduled_at_value) if scheduled_at_value else None
 
     provider = Provider.query.filter_by(profile_code=profile_code).first()
-    if not provider:
+    if not provider or not provider.is_active:
         return jsonify({"error": "Provider not found"}), 404
 
     service = Service.query.filter_by(slug=service_slug).first() if service_slug else Service.query.get(service_id)
-    if not service:
+    if not service or not service.is_active:
         return jsonify({"error": "Service not found"}), 404
 
     offered = ProviderService.query.filter_by(
-        provider_id=provider.id, service_id=service.id
+        provider_id=provider.id, service_id=service.id, is_active=True
     ).first()
     if not offered:
         return jsonify({"error": "Provider does not offer this service"}), 400

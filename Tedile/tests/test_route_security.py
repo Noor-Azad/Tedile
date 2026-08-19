@@ -139,6 +139,65 @@ def test_booking_response_excludes_internal_ids(app, client):
         assert forbidden not in payload
 
 
+def _booking_setup(app):
+    with app.app_context():
+        customer = user("booking-active-customer@example.com", "customer")
+        record = provider("BOOKING-ACTIVE")
+        service = service_for(record)
+        relation = ProviderService.query.filter_by(
+            provider_id=record.id, service_id=service.id
+        ).one()
+        ids = (customer, record, service, relation)
+    return ids
+
+
+def _create_booking(client, customer, profile_code, service_slug, token):
+    set_session(client, customer)
+    return client.post(
+        "/customer/bookings",
+        data={
+            "csrf_token": token,
+            "provider_profile_code": profile_code,
+            "service_slug": service_slug,
+        },
+    )
+
+
+def test_booking_requires_all_related_records_to_be_active(app, client):
+    customer, record, service, relation = _booking_setup(app)
+    token = set_session(client, customer)
+    profile_code = record.profile_code
+    service_slug = service.slug
+    provider_id = record.id
+    service_id = service.id
+    relation_id = relation.id
+
+    response = _create_booking(client, customer, profile_code, service_slug, token)
+    assert response.status_code == 201
+
+    with app.app_context():
+        record = db.session.get(Provider, provider_id)
+        record.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 404
+
+    with app.app_context():
+        record = db.session.get(Provider, provider_id)
+        record.is_active = True
+        service = db.session.get(Service, service_id)
+        service.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 404
+
+    with app.app_context():
+        service = db.session.get(Service, service_id)
+        service.is_active = True
+        relation = db.session.get(ProviderService, relation_id)
+        relation.is_active = False
+        db.session.commit()
+    assert _create_booking(client, customer, profile_code, service_slug, token).status_code == 400
+
+
 def test_role_boundaries_reject_wrong_dashboard(app, client):
     with app.app_context():
         customer = user("customer@example.com", "customer")
