@@ -12,7 +12,7 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
 }
 CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; "
@@ -72,6 +72,16 @@ def test_api_response_has_low_risk_security_headers(client):
     assert "unsafe-eval" not in response.headers["Content-Security-Policy"]
     assert "Strict-Transport-Security" not in response.headers
     assert "Cross-Origin-Resource-Policy" not in response.headers
+
+
+def test_production_disables_geolocation(app, client):
+    app.config["APP_ENV"] = "production"
+
+    response = client.get("/")
+
+    assert response.headers["Permissions-Policy"] == (
+        "camera=(), microphone=(), geolocation=()"
+    )
 
 
 def test_csp_contains_required_directives(client):

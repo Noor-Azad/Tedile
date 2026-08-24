@@ -30,7 +30,7 @@
           <p><strong>Phone</strong><br />{{ user.phone or 'Not provided' }}</p>
           <p><strong>Role</strong><br />{{ user.role }}</p>
           <p><strong>Onboarding status</strong><br />{{ 'Complete' if user.onboarding_completed else 'Incomplete' }}</p>
-          <p><strong>Account created</strong><br />{{ user.created_at }}</p>
+          <p><strong>Account created</strong><br />{{ user.created_at|format_datetime }}</p>
         </div>
       </section>
     </main>

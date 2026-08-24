@@ -99,6 +99,7 @@
         {% else %}
         <p>No providers yet.</p>
         {% endfor %}
+        <p><a class="button button-secondary" href="{{ url_for('admin.riders') }}">View rider applications</a> <a class="button button-secondary" href="{{ url_for('admin.rides') }}">View rides</a> <a class="button button-secondary" href="{{ url_for('admin.pricing') }}">Fare pricing</a></p>
       </section>
       {% endif %}
     </main>

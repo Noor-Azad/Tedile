@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from app.extensions import db, limiter, migrate
 from app.security import get_csrf_token
+from app.template_filters import format_datetime
 from config import DevelopmentConfig, ProductionConfig, UATConfig
 
 
@@ -40,6 +41,7 @@ def create_app():
         raise RuntimeError("OTP_REQUIRED must be true in all Tedile environments.")
     app.secret_key = app.config["SECRET_KEY"]
     app.context_processor(lambda: {"csrf_token": get_csrf_token})
+    app.jinja_env.filters["format_datetime"] = format_datetime
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -52,18 +54,23 @@ def create_app():
     from app.models.location import Location  # noqa: F401
     from app.models.booking import Booking  # noqa: F401
     from app.models.review import Review  # noqa: F401
+    from app.models.rider import Rider  # noqa: F401
+    from app.models.bike_ride import BikeRide  # noqa: F401
+    from app.models.fare_configuration import FareConfiguration  # noqa: F401
 
     # Schema is managed exclusively via Alembic migrations (see migrations/), not db.create_all().
 
     from app.routes.auth import auth_bp
     from app.routes.customer import customer_bp
     from app.routes.provider import provider_bp
+    from app.routes.rider import rider_bp
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(customer_bp)
     app.register_blueprint(provider_bp)
+    app.register_blueprint(rider_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
 
@@ -78,8 +85,14 @@ def create_app():
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        geolocation_policy = (
+            "geolocation=(self)"
+            if app.config.get("APP_ENV") == "development"
+            else "geolocation=()"
+        )
         response.headers.setdefault(
-            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+            "Permissions-Policy",
+            f"camera=(), microphone=(), {geolocation_policy}",
         )
 
         sensitive_paths = (

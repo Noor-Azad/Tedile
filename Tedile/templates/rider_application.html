@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile | Become a Rider</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="marketplace-page">
+    <header class="site-header">
+      <a class="wordmark" href="{{ url_for('customer.dashboard') }}">Tedile</a>
+      <div class="header-actions"><span class="account-name">{{ user.name }}</span><a class="button button-quiet" href="{{ url_for('customer.dashboard') }}">Back to dashboard</a></div>
+    </header>
+    <main class="feature-shell">
+      <section class="feature-intro"><p class="eyebrow">VILLAGE BIKE RIDE</p><h1>Become a Rider</h1><p>Own a bike and hold a valid driving licence? Apply to become a Tedile Rider.</p></section>
+      {% if rider %}
+      <section class="feature-card" aria-labelledby="rider-status-title">{% if error %}<p class="error-banner">{{ error }}</p>{% endif %}<h2 id="rider-status-title">{% if rider.status == 'PENDING' %}Your rider application is under review.{% elif rider.status == 'APPROVED' %}Your rider application has been approved.{% else %}Your rider application was rejected.{% endif %}</h2><p>Rider operations are not available yet. Tedile will add rider trip tools in a future update.</p><div class="feature-actions"><a class="button button-secondary" href="{{ url_for('customer.dashboard') }}">Return to dashboard</a></div></section>
+      {% else %}
+      <section class="feature-card" aria-labelledby="rider-application-title"><h2 id="rider-application-title">Rider application</h2>{% if error %}<p class="error-banner">{{ error }}</p>{% endif %}<form class="form-card" method="POST" action="{{ url_for('customer.submit_rider_application') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><label>Bike make and model<input type="text" name="bike_make_model" maxlength="160" required /></label><label>Bike registration number<input type="text" name="bike_registration_number" maxlength="80" required /></label><label>Driving licence number<input type="text" name="license_number" maxlength="80" required /></label><label>Licence expiry date<input type="date" name="license_expiry_date" required /></label><button class="button button-primary" type="submit">Submit application</button></form></section>
+      {% endif %}
+    </main>
+  </body>
+</html>

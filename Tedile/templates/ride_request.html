@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile | Book a Ride</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="marketplace-page">
+    <header class="site-header">
+      <a class="wordmark" href="{{ url_for('customer.dashboard') }}">Tedile</a>
+      <div class="header-actions">
+        <span class="account-name">{{ user.name }}</span>
+        <a class="button button-quiet" href="{{ url_for('customer.dashboard') }}">Back to dashboard</a>
+      </div>
+    </header>
+    <main class="feature-shell">
+      <section class="feature-intro">
+        <p class="eyebrow">VILLAGE BIKE RIDE</p>
+        <h1>Book a Ride</h1>
+        <p>Enter a pickup and destination. The current fare is <strong>{{ fare_configuration.currency }} {{ '%.2f'|format(fare_configuration.base_fare) }}</strong> per ride.</p>
+      </section>
+      <section class="feature-card" aria-labelledby="ride-request-title">
+        <h2 id="ride-request-title">Where should we pick you up?</h2>
+        {% if error %}<p class="error-banner">{{ error }}</p>{% endif %}
+        <form class="form-card" method="POST" action="{{ url_for('customer.new_ride') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <label>Pickup address<input type="text" name="pickup_address" maxlength="500" required /></label>
+          <div class="form-grid"><label>Pickup latitude<input type="number" name="pickup_latitude" step="any" min="-90" max="90" required /></label><label>Pickup longitude<input type="number" name="pickup_longitude" step="any" min="-180" max="180" required /></label></div>
+          <label>Destination address<input type="text" name="destination_address" maxlength="500" required /></label>
+          <div class="form-grid"><label>Destination latitude<input type="number" name="destination_latitude" step="any" min="-90" max="90" required /></label><label>Destination longitude<input type="number" name="destination_longitude" step="any" min="-180" max="180" required /></label></div>
+          <label>Note for the rider (optional)<textarea name="customer_note" maxlength="2000" rows="3"></textarea></label>
+          <p><strong>Applicable fare:</strong> {{ fare_configuration.currency }} {{ '%.2f'|format(fare_configuration.base_fare) }}</p><div class="feature-actions"><button class="button button-primary" type="submit">Request Ride</button><a class="button button-secondary" href="{{ url_for('customer.dashboard') }}">Cancel</a></div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

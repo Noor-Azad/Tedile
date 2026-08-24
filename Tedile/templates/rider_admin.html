@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Tedile | Rider applications</title><link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" /></head>
+  <body>
+    <header class="topbar"><h1>Tedile</h1><div class="topbar-user"><span>{{ user.name }} · {{ user.role }}</span><a href="{{ url_for('admin.admin_dashboard') }}">Admin dashboard</a></div></header>
+    <main class="dashboard"><section class="card"><h2>Rider applications</h2>
+      {% for application in applications %}
+      <article class="booking-row"><div><strong>{{ application.name }}</strong><br /><span>{{ application.email }} · {{ application.phone or 'No phone' }}</span><br /><span>Bike: {{ application.bike_make_model }} · Registration: {{ application.bike_registration_number }}</span><br /><span>Licence: {{ application.license_number }} · Expires {{ application.license_expiry_date }}</span></div><span class="badge">{{ application.status }}</span>{% if application.status == 'PENDING' %}<div class="admin-actions"><form method="POST" action="{{ url_for('admin.approve_rider', rider_id=application.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button type="submit">Approve</button></form><form method="POST" action="{{ url_for('admin.reject_rider', rider_id=application.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button type="submit">Reject</button></form></div>{% endif %}</article>
+      {% else %}<p>No rider applications yet.</p>{% endfor %}
+    </section></main>
+  </body>
+</html>
