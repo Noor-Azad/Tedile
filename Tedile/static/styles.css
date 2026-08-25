@@ -41,6 +41,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .header-actions { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: .9rem; }
 .header-actions a:hover { color: var(--brand-dark); }
 .account-name { color: var(--ink); font-weight: 700; }
+.notification-list { display: grid; gap: 16px; }
+.notification-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.notification-unread { border-color: var(--brand); }
+.notification-item h2, .notification-item p { margin-top: 0; }
+.notification-meta { color: var(--muted); font-size: .9rem; }
+@media (max-width: 640px) { .notification-item { flex-direction: column; } }
 
 .hero-shell { max-width: 1240px; margin: 30px auto 0; padding: 68px 7%; background: var(--brand-dark); color: white; border-radius: 28px; position: relative; overflow: hidden; }
 .hero-shell::after { content: ""; position: absolute; width: 330px; height: 330px; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; right: -80px; top: -120px; box-shadow: 0 0 0 42px rgba(255,255,255,.03), 0 0 0 84px rgba(255,255,255,.02); }
@@ -298,3 +304,7 @@ button:disabled, .button:disabled { opacity: .55; cursor: not-allowed; transform
   .history-grid { grid-template-columns: 1fr; gap: 14px; }
   .history-card { min-height: 0; padding: 20px; }
 }
+
+.form-section { display: grid; gap: 13px; margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius-card); }
+.form-section legend { padding: 0 7px; color: var(--brand-dark); font-weight: 800; }
+.fare-confirmation { background: var(--mint); }

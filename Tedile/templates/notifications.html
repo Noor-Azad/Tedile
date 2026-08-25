@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tedile | Notifications</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="marketplace-page">
+    <header class="site-header">
+      <a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a>
+      <div class="header-actions">
+        <span class="account-name">{{ user.name }}</span>
+        <form method="POST" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="button button-quiet" type="submit">Log out</button>
+        </form>
+      </div>
+    </header>
+    <main class="feature-shell">
+      <section class="feature-intro">
+        <p class="eyebrow">TEDILE UPDATES</p>
+        <h1>Notifications</h1>
+        <p>Ride updates and requests connected to your account.</p>
+      </section>
+      <section class="feature-card notification-list" aria-label="Notifications">
+        {% for notification in notifications %}
+          <article class="notification-item{% if not notification.is_read %} notification-unread{% endif %}">
+            <div>
+              <p class="notification-meta">{{ notification.created_at|format_datetime }}{% if not notification.is_read %} · Unread{% endif %}</p>
+              <h2>{{ notification.title }}</h2>
+              <p>{{ notification.message }}</p>
+            </div>
+            {% if not notification.is_read %}
+              <form method="POST" action="{{ url_for('notifications.mark_notification_read', notification_id=notification.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button class="button button-secondary" type="submit">Mark read</button>
+              </form>
+            {% endif %}
+          </article>
+        {% else %}
+          <p class="empty-state">You have no notifications yet.</p>
+        {% endfor %}
+      </section>
+    </main>
+  </body>
+</html>

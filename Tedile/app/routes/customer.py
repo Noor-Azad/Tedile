@@ -13,6 +13,7 @@ from app.models.rider import Rider
 from app.models.bike_ride import BikeRide
 from app.models.user import User
 from app.models.fare_configuration import FareConfiguration
+from app.services.notification_service import NotificationService
 from app.security import csrf_protect
 
 customer_bp = Blueprint("customer", __name__, url_prefix="/customer")
@@ -64,6 +65,8 @@ def new_ride():
 
     def coordinate(name, minimum, maximum):
         value = request.form.get(name, "").strip()
+        if not value:
+            return None
         try:
             parsed = float(value)
         except (TypeError, ValueError):
@@ -103,6 +106,8 @@ def new_ride():
         pricing_base_fare=fare["base_fare"],
     )
     db.session.add(ride)
+    db.session.flush()
+    NotificationService.notify_approved_riders(ride)
     db.session.commit()
     return redirect(url_for("customer.rides"))
 
@@ -144,6 +149,7 @@ def cancel_ride(ride_id):
     if ride.status != BikeRide.REQUESTED:
         return jsonify({"error": "Only requested rides can be cancelled."}), 409
     ride.transition_to(BikeRide.CANCELLED)
+    NotificationService.notify_assigned_rider_of_customer_cancellation(ride)
     db.session.commit()
     return redirect(url_for("customer.rides"))
 

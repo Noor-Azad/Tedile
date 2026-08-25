@@ -8,6 +8,8 @@
 | BR-04 | Ride Fare & Pricing | Complete |
 | BR-05 | Rider Ride History | Complete |
 | BR-06 | Rider Ride Cancellation | Complete |
+| UI-01 | Global visual design system | Complete |
+| BR-07 | Ride Notifications | Complete |
 
 ## BR-03 scope
 
@@ -70,9 +72,9 @@ introduce online payment or settlement.
 - Admin ride visibility includes the estimated/final fare and pricing snapshot
   for operational review.
 
-### Proposed BikeRide pricing fields
+### Implemented BikeRide pricing snapshot fields
 
-The future implementation should add fields similar to:
+The implementation adds the following fields to BikeRide:
 
 - `estimated_fare` — the server-calculated request-time amount.
 - `final_fare` — the authoritative completed-ride amount, recorded from the
@@ -298,3 +300,183 @@ BR-06 does not include payment, settlement, cancellation fees, cancellation
 reasons, maps, routing, live location, notifications, dynamic pricing, or
 unrelated UI redesign. It does not change customer cancellation behavior or
 the marketplace `Booking` workflow.
+
+## UI-01 — Global Visual Design System
+
+**Status:** Complete. The shared Tedile visual system is implemented and
+applied to the existing representative customer, Rider, Admin, and
+authentication pages.
+
+### Scope
+
+- Shared CSS tokens for typography, color, spacing, borders, radii, and shadows.
+- Reusable responsive layouts for headers, cards, forms, buttons, alerts, and
+  ride status badges.
+- Responsive desktop, tablet, and mobile behavior without changing route or
+  business behavior.
+- Shared human-readable date/time presentation that removes raw database
+  formatting and microseconds from user-facing timestamps.
+
+UI-01 does not redesign every page or introduce new application functionality.
+
+## BR-07 — Ride Notifications
+
+**Status:** Complete. Persistent in-app ride notifications, ownership-scoped
+history, CSRF-protected read state, and lifecycle event coverage are
+implemented and verified.
+
+### Objective
+
+Add a persistent, initial in-app notification system for the existing BikeRide
+workflow. Customers and Riders should be able to review important ride events
+even when they were offline when the event occurred.
+
+BR-07 does not define external delivery providers or a detailed notification
+bell/list visual design. The functional requirement is limited to persistent
+in-app notifications and their ownership/read-state behavior.
+
+### Scope
+
+BR-07 introduces notifications addressed to the existing `User` account. A
+notification may optionally reference the related `BikeRide` for navigation and
+history, but the recipient relationship is User-centered rather than coupled
+directly to `Rider`.
+
+#### Notification event matrix
+
+| Event | Trigger | Recipient | Initial notification expectation |
+|---|---|---|---|
+| Ride accepted | A Rider successfully transitions a requested ride to `ACCEPTED` | The ride's customer User | Title such as `Ride accepted`; state that a Rider accepted the ride. |
+| Ride started | The assigned Rider transitions the ride to `IN_PROGRESS` | The ride's customer User | Title such as `Ride started`; state that the trip has started. |
+| Ride completed | The assigned Rider transitions the ride to `COMPLETED` | The ride's customer User | Title such as `Ride completed`; state that the trip is complete. |
+| Ride cancelled by Rider | The assigned Rider transitions an `ACCEPTED` ride to `CANCELLED` | The ride's customer User | Title such as `Ride cancelled`; state that the Rider cancelled the ride. |
+| New ride request | A customer creates a ride in `REQUESTED` state | Each eligible approved Rider who can receive ride requests | Title such as `New ride request`; identify that a ride request is available without exposing unnecessary private details. |
+| Ride cancelled by customer | The customer transitions a `REQUESTED` ride to `CANCELLED` | The assigned Rider, if one exists | Title such as `Ride cancelled`; state that the customer cancelled the ride. If no Rider is assigned, no Rider notification is created. |
+
+The new-ride-request event is addressed to approved Riders eligible under the
+existing Rider workflow. BR-07 does not introduce a new matching or dispatch
+algorithm.
+
+### Recipient and content rules
+
+- The customer recipient is the User identified by `BikeRide.customer_id`.
+- A Rider recipient is the User associated with the relevant Rider or assigned
+  ride, using the existing Rider/User relationship.
+- New ride requests may notify multiple eligible approved Rider Users.
+- Notifications should contain a concise title, readable message, event type,
+  creation time, and optional BikeRide reference.
+- Notification text must not expose another user's private contact details,
+  credentials, or unrelated account information.
+- Pickup/destination information should be limited to what the recipient is
+  already authorized to see for that ride; BR-07 does not create a new private
+  data disclosure path.
+
+### Persistence and lifecycle behavior
+
+- Notifications are persistent records, not transient session messages.
+- The expected architecture is a new persistent `Notification` entity linked
+  to a recipient `User` and optionally to a `BikeRide`.
+- Each notification starts unread.
+- Notifications remain available when the recipient was offline at event time.
+- Notifications can be listed as current/history records and individually
+  marked read by their owning User.
+- A read operation changes only the notification read state; it does not change
+  the BikeRide lifecycle.
+- Notifications associated with completed or cancelled rides remain retained
+  in notification history according to normal retention policy.
+- BR-07 does not require bulk mark-all-read behavior unless a later UI or
+  product decision adds it.
+
+### Duplicate prevention
+
+- A relevant event must create at most one notification per recipient for the
+  same BikeRide event.
+- Repeated requests, retries, or repeated rendering must not create duplicate
+  notifications.
+- Event creation should be idempotent using an unambiguous event identity such
+  as recipient, BikeRide, and event type, supported by application and/or
+  database-level protection.
+- A failed notification write must not create a second notification when the
+  same lifecycle event is safely retried.
+
+### Security and authorization
+
+- Only authenticated Users may view their own notifications.
+- Notification queries must be scoped by the authenticated User's ID.
+- Changing a notification ID in a URL or request must not expose another User's
+  notification.
+- Only the owning User may mark a notification read.
+- Any state-changing mark-read operation must use the existing CSRF protection.
+- Notification creation must be server-side and tied to an authorized BikeRide
+  lifecycle event; clients cannot create notifications by submitting arbitrary
+  event or recipient values.
+- Existing BikeRide ownership, approved-Rider, role, and authentication checks
+  remain authoritative.
+
+### Relationship to the BikeRide lifecycle
+
+Notifications are derived from the existing lifecycle transitions and do not
+add new BikeRide statuses or alter transition rules:
+
+- `REQUESTED` creation can notify eligible approved Riders.
+- `ACCEPTED` creates the customer acceptance notification.
+- `IN_PROGRESS` creates the customer started notification.
+- `COMPLETED` creates the customer completion notification.
+- Rider or customer cancellation creates the applicable cancellation
+  notification when a recipient exists.
+
+Completed and cancelled rides retain their associated notifications for the
+recipient's notification history. BR-07 does not introduce status-history or
+audit records for every transition beyond the notification event record itself.
+
+### Acceptance criteria
+
+- **AC-01:** A persistent notification is created for each defined BikeRide
+  event in the event matrix.
+- **AC-02:** Each notification is delivered to the correct User recipient or
+  recipients.
+- **AC-03:** New notifications are stored with an unread state.
+- **AC-04:** An authenticated User can list their own notifications/history.
+- **AC-05:** A User can individually mark their own notification as read.
+- **AC-06:** A User cannot view or mark read another User's notification,
+  including through ID or URL tampering.
+- **AC-07:** Notification state changes require the existing CSRF protection.
+- **AC-08:** Notification creation is server-side and cannot be redirected to a
+  different recipient by client-submitted values.
+- **AC-09:** Notifications are persistent and remain available when the
+  recipient was offline.
+- **AC-10:** Duplicate notifications are prevented for the same recipient,
+  BikeRide, and lifecycle event.
+- **AC-11:** Notifications associated with completed or cancelled rides remain
+  available in notification history.
+- **AC-12:** Notification content does not disclose unauthorized private
+  information.
+- **AC-13:** Existing BR-01 through BR-06 behavior and BikeRide lifecycle rules
+  remain unaffected.
+- **AC-14:** Existing marketplace `Booking` functionality remains unaffected.
+
+### Dependencies
+
+- BR-01 customer Bike Ride entry points.
+- BR-02 Rider registration and approval.
+- BR-03 BikeRide lifecycle and ownership enforcement.
+- BR-04 fare snapshot behavior, without changing fare logic.
+- BR-05 Rider Ride History and historical ride access boundaries.
+- BR-06 Rider Ride Cancellation and cancellation ownership rules.
+- Existing User authentication, authorization, session, and CSRF mechanisms.
+
+### Explicit exclusions
+
+BR-07 does not include SMS, WhatsApp, email notifications, push notifications,
+external notification providers, payment notifications, settlement
+notifications, notification delivery preferences, notification templates for
+unlisted events, maps, live location, routing, matching, chat, ratings,
+payments, or settlement. It does not add Admin notifications unless a later
+requirement explicitly defines them.
+
+### Future possibilities
+
+Later requirements may define external delivery channels, notification
+preferences, bulk read operations, richer navigation/deep links, or additional
+event types. Those capabilities are outside BR-07 and require separate product
+decisions.

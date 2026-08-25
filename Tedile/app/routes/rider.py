@@ -4,6 +4,7 @@ from app.extensions import db
 from app.models.bike_ride import BikeRide
 from app.models.rider import Rider
 from app.models.user import User
+from app.services.notification_service import NotificationService
 from app.routes.customer import login_required
 from app.security import csrf_protect
 
@@ -78,6 +79,11 @@ def accept_ride(ride_id):
     if not BikeRide.claim(ride_id, rider.id):
         db.session.rollback()
         return redirect(url_for("rider.dashboard"))
+    ride = db.session.get(BikeRide, ride_id)
+    NotificationService.notify_customer(
+        ride, NotificationService.RIDE_ACCEPTED, "Ride accepted",
+        "A Rider accepted your ride request.",
+    )
     db.session.commit()
     return redirect(url_for("rider.dashboard"))
 
@@ -92,6 +98,10 @@ def start_ride(ride_id):
         ride.transition_to(BikeRide.IN_PROGRESS)
     except ValueError:
         return redirect(url_for("rider.dashboard"))
+    NotificationService.notify_customer(
+        ride, NotificationService.RIDE_STARTED, "Ride started",
+        "Your Rider has started the trip.",
+    )
     db.session.commit()
     return redirect(url_for("rider.dashboard"))
 
@@ -106,6 +116,10 @@ def complete_ride(ride_id):
         ride.transition_to(BikeRide.COMPLETED)
     except ValueError:
         return redirect(url_for("rider.dashboard"))
+    NotificationService.notify_customer(
+        ride, NotificationService.RIDE_COMPLETED, "Ride completed",
+        "Your village bike ride is complete.",
+    )
     db.session.commit()
     return redirect(url_for("rider.dashboard"))
 
@@ -119,5 +133,6 @@ def cancel_ride(ride_id):
     if ride.status != BikeRide.ACCEPTED:
         return redirect(url_for("rider.dashboard"))
     ride.transition_to(BikeRide.CANCELLED)
+    NotificationService.notify_rider_cancellation(ride)
     db.session.commit()
     return redirect(url_for("rider.dashboard"))

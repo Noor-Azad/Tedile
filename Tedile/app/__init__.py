@@ -57,6 +57,7 @@ def create_app():
     from app.models.rider import Rider  # noqa: F401
     from app.models.bike_ride import BikeRide  # noqa: F401
     from app.models.fare_configuration import FareConfiguration  # noqa: F401
+    from app.models.notification import Notification  # noqa: F401
 
     # Schema is managed exclusively via Alembic migrations (see migrations/), not db.create_all().
 
@@ -66,6 +67,7 @@ def create_app():
     from app.routes.rider import rider_bp
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
+    from app.routes.notifications import notifications_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(customer_bp)
@@ -73,6 +75,7 @@ def create_app():
     app.register_blueprint(rider_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(notifications_bp)
 
     @app.after_request
     def add_security_headers(response):

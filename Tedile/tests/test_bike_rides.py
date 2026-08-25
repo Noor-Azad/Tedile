@@ -105,6 +105,49 @@ def test_customer_can_request_and_view_own_ride(app, client):
     assert b"Malda Station" in client.get(f"/customer/rides/{ride.id}").data
 
 
+def test_customer_can_create_ride_without_coordinates_and_stores_nulls(app, client):
+    customer = make_user("address-only-ride@example.com")
+    login(client, customer)
+
+    response = client.post(
+        "/customer/rides/new",
+        data={
+            "csrf_token": csrf(client),
+            "pickup_address": "Village market",
+            "destination_address": "Bus stand",
+            "customer_note": "Please call on arrival.",
+        },
+    )
+
+    assert response.status_code == 302
+    ride = BikeRide.query.one()
+    assert ride.pickup_latitude is None
+    assert ride.pickup_longitude is None
+    assert ride.destination_latitude is None
+    assert ride.destination_longitude is None
+    assert ride.estimated_fare == Decimal("50.00")
+
+
+@pytest.mark.parametrize("field", [
+    "pickup_latitude",
+    "pickup_longitude",
+    "destination_latitude",
+    "destination_longitude",
+])
+def test_invalid_supplied_coordinate_is_still_rejected(app, client, field):
+    customer = make_user(f"invalid-coordinate-{field}@example.com")
+    login(client, customer)
+    data = {
+        "csrf_token": csrf(client),
+        "pickup_address": "Village market",
+        "destination_address": "Bus stand",
+        field: "not-a-coordinate",
+    }
+
+    assert client.post("/customer/rides/new", data=data).status_code == 400
+    assert BikeRide.query.count() == 0
+
+
 def test_customer_ride_request_requires_login_and_csrf(client):
     assert client.get("/customer/rides/new").status_code == 302
 

@@ -61,6 +61,13 @@ def test_bike_ride_entry_pages_are_customer_only(app, client, path, heading):
     assert heading in response.data
     if path == "/customer/rides/new":
         assert b"Request Ride" in response.data
+        assert b'name="pickup_latitude"' not in response.data
+        assert b'name="pickup_longitude"' not in response.data
+        assert b'name="destination_latitude"' not in response.data
+        assert b'name="destination_longitude"' not in response.data
+        assert b">Pickup<" in response.data
+        assert b">Destination<" in response.data
+        assert b">Fare and confirmation<" in response.data
     else:
         assert b"Submit application" in response.data
 

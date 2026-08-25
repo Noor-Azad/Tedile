@@ -21,16 +21,14 @@
         <p>Enter a pickup and destination. The current fare is <strong>{{ fare_configuration.currency }} {{ '%.2f'|format(fare_configuration.base_fare) }}</strong> per ride.</p>
       </section>
       <section class="feature-card" aria-labelledby="ride-request-title">
-        <h2 id="ride-request-title">Where should we pick you up?</h2>
+        <h2 id="ride-request-title">Ride details</h2>
         {% if error %}<p class="error-banner">{{ error }}</p>{% endif %}
         <form class="form-card" method="POST" action="{{ url_for('customer.new_ride') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <label>Pickup address<input type="text" name="pickup_address" maxlength="500" required /></label>
-          <div class="form-grid"><label>Pickup latitude<input type="number" name="pickup_latitude" step="any" min="-90" max="90" required /></label><label>Pickup longitude<input type="number" name="pickup_longitude" step="any" min="-180" max="180" required /></label></div>
-          <label>Destination address<input type="text" name="destination_address" maxlength="500" required /></label>
-          <div class="form-grid"><label>Destination latitude<input type="number" name="destination_latitude" step="any" min="-90" max="90" required /></label><label>Destination longitude<input type="number" name="destination_longitude" step="any" min="-180" max="180" required /></label></div>
-          <label>Note for the rider (optional)<textarea name="customer_note" maxlength="2000" rows="3"></textarea></label>
-          <p><strong>Applicable fare:</strong> {{ fare_configuration.currency }} {{ '%.2f'|format(fare_configuration.base_fare) }}</p><div class="feature-actions"><button class="button button-primary" type="submit">Request Ride</button><a class="button button-secondary" href="{{ url_for('customer.dashboard') }}">Cancel</a></div>
+          <fieldset class="form-section"><legend>Pickup</legend><label>Pickup address<input type="text" name="pickup_address" maxlength="500" required /></label></fieldset>
+          <fieldset class="form-section"><legend>Destination</legend><label>Destination address<input type="text" name="destination_address" maxlength="500" required /></label></fieldset>
+          <fieldset class="form-section"><legend>Note</legend><label>Note for the rider (optional)<textarea name="customer_note" maxlength="2000" rows="3"></textarea></label></fieldset>
+          <fieldset class="form-section fare-confirmation"><legend>Fare and confirmation</legend><p><strong>Applicable fare:</strong> {{ fare_configuration.currency }} {{ '%.2f'|format(fare_configuration.base_fare) }} per ride.</p><div class="feature-actions"><button class="button button-primary" type="submit">Request Ride</button><a class="button button-secondary" href="{{ url_for('customer.dashboard') }}">Cancel</a></div></fieldset>
         </form>
       </section>
     </main>

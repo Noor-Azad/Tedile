@@ -17,6 +17,15 @@ service providers.
   bookings
 - Admin verification workflow for providers
 - Ratings/reviews model for completed bookings
+- Village Bike Ride MVP: customers request rides, approved Riders accept and
+  operate rides, customers and Riders can view ride history, and Riders can
+  cancel accepted rides
+- Configurable flat INR ride fares with historical fare snapshots and Admin
+  pricing controls
+- Rider registration and Admin approval workflow for bike owners with valid
+  driving licences
+- Shared responsive Tedile visual design system with human-readable date/time
+  presentation
 - iOS and Android app shells via Capacitor, wrapping the same web app
 - Restricted public API responses, PII encryption at rest, and authorization
   gating for contact details — see
@@ -47,9 +56,9 @@ Tedile/
 ├── app/
 │   ├── __init__.py            # app factory
 │   ├── extensions.py           # SQLAlchemy instance
-│   ├── models/                  # Provider, Service, ProviderService, Location, Booking, Review, User
-│   ├── routes/                   # auth, customer, provider, admin, api (search/geocode)
-│   └── services/                  # auth_service, search_service, geo_service, s3_service, storage_service
+│   ├── models/                  # marketplace, Rider, BikeRide, and fare models
+│   ├── routes/                  # auth, customer, provider, Rider, admin, api
+│   └── services/                # auth, search/geocode, OTP, S3, and storage services
 ├── static/
 ├── templates/
 ├── tests/
