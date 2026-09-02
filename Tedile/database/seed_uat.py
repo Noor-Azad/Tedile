@@ -60,6 +60,11 @@ UAT_CUSTOMERS = (
     ("uat.customer03@tedile.com", "UAT Customer 3"),
 )
 
+CANONICAL_UAT_EMAILS = frozenset(
+    {email for email, _name in UAT_CUSTOMERS}
+    | {email for _profile, email, _name, _slug, _lat, _lon in UAT_PROVIDERS}
+)
+
 
 def _assert_uat_target(app):
     """Refuse every target that is not positively identified as UAT."""
@@ -92,10 +97,15 @@ def _assert_connected_database(app, actual_database_name):
 
 
 def _get_or_create_user(email, name, role):
+    if email not in CANONICAL_UAT_EMAILS:
+        raise RuntimeError(f"UAT seed account is not canonical: {email}")
     user = User.query.filter_by(email=email).first()
     created = user is None
     if user is not None and user.role != role:
         raise RuntimeError(f"UAT account has an unexpected role: {email}")
+    if user is not None:
+        user.set_password(UAT_PASSWORD)
+        return user, False
     if created:
         user = User(email=email, name=name, role=role, phone="+910000000000", onboarding_completed=True)
         user.set_password(UAT_PASSWORD)
