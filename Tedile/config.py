@@ -1,7 +1,14 @@
 import os
 import secrets
+from pathlib import Path
 
 from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+
+
+# Load the project-local environment before the configuration class reads any
+# environment variables. Existing shell variables win over values in .env.
+load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
 
 # Generated once per process if SECRET_KEY is not set via environment.
 # Never hardcode a real secret key in source control.
@@ -30,6 +37,7 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = DATABASE_URL or "sqlite:///tedile.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    ROUTING_SERVICE_URL = os.getenv("ROUTING_SERVICE_URL", "http://127.0.0.1:5000")
 
     AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
     S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "tedile-app")
@@ -41,6 +49,7 @@ class Config:
 
     # Default search radius (km) used when a client omits it.
     DEFAULT_SEARCH_RADIUS_KM = int(os.getenv("DEFAULT_SEARCH_RADIUS_KM", "50"))
+    SEARCH_RADIUS_BANDS_KM = [5, 10, 25, 50]
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_HEADERS_ENABLED = False
     OTP_EXPIRY_SECONDS = int(os.getenv("OTP_EXPIRY_SECONDS", "300"))

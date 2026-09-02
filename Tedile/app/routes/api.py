@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import math
 
 from flask import Blueprint, current_app, jsonify, request, session
+from urllib.parse import urlencode
 
 from app.extensions import db
 from app.models.provider_service import ProviderService
@@ -100,6 +101,7 @@ def search():
         limit=limit,
         offset=offset,
         return_meta=True,
+        radius_bands_km=current_app.config.get("SEARCH_RADIUS_BANDS_KM"),
     )
 
     next_offset = offset + limit if offset + limit < total else None
@@ -113,6 +115,28 @@ def search():
         "next_offset": next_offset,
         "data": {"providers": results},
     })
+
+
+@api_bp.route("/providers/<profile_code>/directions")
+@login_required(role="customer")
+def provider_directions(profile_code):
+    latitude, error = _query_float("latitude", -90, 90)
+    if error:
+        return jsonify({"error": error}), 400
+    longitude, error = _query_float("longitude", -180, 180)
+    if error:
+        return jsonify({"error": error}), 400
+    if latitude is None or longitude is None:
+        return jsonify({"error": "Customer location is required"}), 400
+    provider = Provider.query.filter_by(profile_code=profile_code, is_active=True).first()
+    if not provider or provider.latitude is None or provider.longitude is None:
+        return jsonify({"error": "Provider location is unavailable"}), 404
+    query = urlencode({
+        "api": "1", "origin": f"{latitude},{longitude}",
+        "destination": f"{provider.latitude},{provider.longitude}",
+        "travelmode": "driving",
+    })
+    return jsonify({"url": f"https://www.google.com/maps/dir/?{query}"})
 
 
 @api_bp.route("/providers/<profile_code>")
@@ -134,6 +158,29 @@ def provider_profile(profile_code):
         return jsonify({"error": "Provider not found"}), 404
     return jsonify(provider.to_public_dto())
 
+@api_bp.route("/providers/<profile_code>/services")
+def provider_services(profile_code):
+    provider = Provider.query.filter_by(profile_code=profile_code).first()
+
+    if not provider or not provider.is_active:
+        return jsonify({"error": "Provider not found"}), 404
+
+    services = (
+        Service.query
+        .join(ProviderService, ProviderService.service_id == Service.id)
+        .filter(
+            ProviderService.provider_id == provider.id,
+            ProviderService.is_active.is_(True),
+            Service.is_active.is_(True),
+        )
+        .order_by(Service.name.asc())
+        .all()
+    )
+
+    return jsonify({
+        "status": True,
+        "data": [service.to_public_dto() for service in services],
+    })
 
 @api_bp.route("/services")
 def list_services():

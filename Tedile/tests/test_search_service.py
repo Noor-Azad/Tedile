@@ -109,6 +109,52 @@ def test_search_keyword_matches_service_name(app):
         assert provider.profile_code in {record["id"] for record in results}
 
 
+def test_synthetic_ac_repair_provider_is_discoverable_from_kolkata(app):
+    with app.app_context():
+        service = Service.query.filter_by(slug="ac-repair").first()
+        if service is None:
+            service = Service(name="AC/Fridge Repair", slug="ac-repair")
+            db.session.add(service)
+            db.session.commit()
+
+        provider = _make_provider("Kolkata", 22.5726, 88.3639, attach_service=False)
+        db.session.add(ProviderService(provider_id=provider.id, service_id=service.id))
+        db.session.commit()
+
+        results = search_providers(
+            latitude=22.5726,
+            longitude=88.3639,
+            service_slug="ac-repair",
+            radius_km=50,
+            radius_bands_km=[5, 10, 25, 50],
+        )
+
+        assert provider.profile_code in {record["id"] for record in results}
+
+
+def test_synthetic_provider_seed_shape_supports_provider_service_lookup(app):
+    with app.app_context():
+        service = Service(name="AC/Fridge Repair", slug="ac-repair")
+        provider = _make_provider("Kolkata", 22.5726, 88.3639, attach_service=False)
+        db.session.add(service)
+        db.session.commit()
+        db.session.add(ProviderService(provider_id=provider.id, service_id=service.id, is_active=True))
+        db.session.commit()
+        assert ProviderService.query.filter_by(provider_id=provider.id, service_id=service.id, is_active=True).first()
+
+
+def test_dev_smoke_seed_defines_four_canonical_provider_mappings():
+    from database.seed_dev import SYNTHETIC_PROVIDERS
+
+    mappings = {profile: (email, slug) for profile, email, _name, slug, _lat, _lon in SYNTHETIC_PROVIDERS}
+    assert mappings == {
+        "DEV-PLUMBER-01": ("dev.plumber01@tedile.test", "plumber"),
+        "DEV-ELECTRICIAN-01": ("dev.electrician01@tedile.test", "electrician"),
+        "DEV-WELDER-SMOKE-01": ("dev.welder01@tedile.test", "welder"),
+        "DEV-AC-REPAIR-SMOKE-01": ("dev.acrepair01@tedile.test", "ac-repair"),
+    }
+
+
 def test_search_verified_only(app):
     with app.app_context():
         verified = _make_provider("Kolkata", 22.5726, 88.3639, verified=True)
