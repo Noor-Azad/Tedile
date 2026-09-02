@@ -32,6 +32,7 @@ def search_providers(
     limit: int = None,
     offset: int = 0,
     return_meta: bool = False,
+    radius_bands_km=None,
 ):
     """Search providers by service/location/price, mirroring a provider-search API."""
     query = (
@@ -70,6 +71,7 @@ def search_providers(
     providers = query.all()
 
     results = []
+    bands = sorted(radius_bands_km or [5, 10, 25, 50])
     for provider in providers:
         distance_km = None
         if latitude is not None and longitude is not None and provider.latitude and provider.longitude:
@@ -77,10 +79,21 @@ def search_providers(
             if radius_km is not None and distance_km > radius_km:
                 continue
 
+        if latitude is not None and longitude is not None:
+            band = next((index for index, boundary in enumerate(bands) if distance_km <= boundary), len(bands))
+        else:
+            band = 0
         # Keep exact distance private; only the coarse bucket is public.
         record = provider.to_public_dto()
         record["_distance_km"] = distance_km
+        record["_distance_band"] = band
         results.append(record)
+
+    if latitude is not None and results:
+        available = [r for r in results if r["availability"] == "available"]
+        pool = available or results
+        selected_band = min(r["_distance_band"] for r in pool)
+        results = [r for r in results if r["_distance_band"] == selected_band]
 
     sort_key_map = {
         "distance": lambda r: (r["_distance_km"] is None, r["_distance_km"] or 0),
@@ -95,9 +108,12 @@ def search_providers(
         "name-desc": lambda r: (r["name"] or "").lower(),
     }
     key_fn = sort_key_map.get(sort, sort_key_map["distance"])
+    if latitude is not None:
+        results.sort(key=lambda r: (r["availability"] != "available", r["_distance_band"]))
     results.sort(key=key_fn, reverse=(sort == "name-desc"))
 
     for record in results:
+        record.pop("_distance_band", None)
         record["distance_bucket"] = distance_bucket(record.pop("_distance_km"))
 
     total = len(results)
