@@ -1,3 +1,6 @@
+import ast
+from pathlib import Path
+
 import pytest
 
 from app.extensions import db
@@ -144,9 +147,19 @@ def test_synthetic_provider_seed_shape_supports_provider_service_lookup(app):
 
 
 def test_dev_smoke_seed_defines_four_canonical_provider_mappings():
-    from database.seed_dev import SYNTHETIC_PROVIDERS
+    seed_path = Path(__file__).parents[1] / "database" / "seed_dev.py"
+    if not seed_path.exists():
+        pytest.skip("database/seed_dev.py is a local-only Development fixture")
 
-    mappings = {profile: (email, slug) for profile, email, _name, slug, _lat, _lon in SYNTHETIC_PROVIDERS}
+    module = ast.parse(seed_path.read_text(encoding="utf-8"))
+    assignment = next(
+        node for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "SYNTHETIC_PROVIDERS" for target in node.targets)
+    )
+    synthetic_providers = ast.literal_eval(assignment.value)
+
+    mappings = {profile: (email, slug) for profile, email, _name, slug, _lat, _lon in synthetic_providers}
     assert mappings == {
         "DEV-PLUMBER-01": ("dev.plumber01@tedile.test", "plumber"),
         "DEV-ELECTRICIAN-01": ("dev.electrician01@tedile.test", "electrician"),
