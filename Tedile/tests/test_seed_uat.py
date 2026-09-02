@@ -1,6 +1,17 @@
 import pytest
 
-from database.seed_uat import UAT_PASSWORD, UAT_CUSTOMERS, UAT_PROVIDERS, _assert_connected_database, _assert_uat_target
+from types import SimpleNamespace
+
+from database.seed_uat import (
+    UAT_MAPPING_MARKER,
+    UAT_PASSWORD,
+    UAT_CUSTOMERS,
+    UAT_PROVIDERS,
+    _assert_connected_database,
+    _assert_uat_target,
+    _is_uat_owned_mapping,
+    _mapping_plan,
+)
 
 
 class FakeApp:
@@ -36,6 +47,44 @@ def test_uat_credentials_are_the_approved_synthetic_accounts():
         "uat.welder01@tedile.com",
         "uat.acrepair01@tedile.com",
     }
+
+
+def test_only_explicitly_marked_canonical_uat_mapping_is_owned():
+    provider = SimpleNamespace(profile_code="UAT-PLUMBER-01")
+    owned = SimpleNamespace(get_sub_services=lambda: [UAT_MAPPING_MARKER])
+    unknown = SimpleNamespace(get_sub_services=lambda: [])
+    assert _is_uat_owned_mapping(provider, owned)
+    assert not _is_uat_owned_mapping(provider, unknown)
+
+
+def test_non_uat_provider_mapping_cannot_be_normalized():
+    provider = SimpleNamespace(profile_code="PROVIDER-01")
+    marked = SimpleNamespace(get_sub_services=lambda: [UAT_MAPPING_MARKER])
+    assert not _is_uat_owned_mapping(provider, marked)
+
+
+def test_mapping_plan_accepts_intended_mapping_only():
+    provider = SimpleNamespace(profile_code="UAT-PLUMBER-01")
+    intended = SimpleNamespace(service_id=1, get_sub_services=lambda: [])
+    unknown, owned = _mapping_plan(provider, [intended], 1)
+    assert unknown == []
+    assert owned == []
+
+
+def test_mapping_plan_rejects_wrong_or_unknown_active_mapping():
+    provider = SimpleNamespace(profile_code="UAT-PLUMBER-01")
+    wrong = SimpleNamespace(service_id=2, get_sub_services=lambda: [])
+    unknown, owned = _mapping_plan(provider, [wrong], 1)
+    assert unknown == [wrong]
+    assert owned == []
+
+
+def test_mapping_plan_identifies_only_explicit_uat_owned_extra():
+    provider = SimpleNamespace(profile_code="UAT-PLUMBER-01")
+    owned = SimpleNamespace(service_id=2, get_sub_services=lambda: [UAT_MAPPING_MARKER])
+    unknown, owned_extras = _mapping_plan(provider, [owned], 1)
+    assert unknown == []
+    assert owned_extras == [owned]
 
 
 @pytest.mark.parametrize("overrides", [

@@ -26,6 +26,7 @@ from sqlalchemy import text
 
 
 UAT_PASSWORD = "Test@1234"
+UAT_MAPPING_MARKER = "__tedile_uat_seed__"
 
 # These are synthetic reference points within the South Dinajpur test area.
 # They deliberately cover Daulatpur, Buniadpur, Gangarampur, and Balurghat so
@@ -164,6 +165,59 @@ def _get_or_create_booking(marker, customer, provider, service, status, location
     return booking, created
 
 
+def _is_uat_owned_mapping(provider, relation):
+    """Only mappings explicitly marked by this seed may be normalized."""
+    return (
+        str(provider.profile_code).startswith("UAT-")
+        and UAT_MAPPING_MARKER in relation.get_sub_services()
+    )
+
+
+def _mapping_plan(provider, active_relations, intended_service_id):
+    """Return unknown and seed-owned extras without mutating any relation."""
+    extras = [item for item in active_relations if item.service_id != intended_service_id]
+    return (
+        [item for item in extras if not _is_uat_owned_mapping(provider, item)],
+        [item for item in extras if _is_uat_owned_mapping(provider, item)],
+    )
+
+
+def _ensure_provider_service(provider, service):
+    """Ensure one intended active mapping without touching unknown mappings."""
+    relation = ProviderService.query.filter_by(
+        provider_id=provider.id, service_id=service.id
+    ).first()
+    if relation is None:
+        relation = ProviderService(
+            provider_id=provider.id, service_id=service.id, is_active=True
+        )
+        relation.set_sub_services([UAT_MAPPING_MARKER])
+        db.session.add(relation)
+        db.session.flush()
+    else:
+        relation.is_active = True
+
+    active_relations = ProviderService.query.filter_by(
+        provider_id=provider.id, is_active=True
+    ).all()
+    unknown, owned_extras = _mapping_plan(provider, active_relations, service.id)
+    if unknown:
+        service_ids = ", ".join(str(item.service_id) for item in unknown)
+        raise RuntimeError(
+            f"UAT provider has unexpected active service mapping(s): "
+            f"{provider.profile_code} service_id(s) {service_ids}"
+        )
+    for item in owned_extras:
+        item.is_active = False
+
+    remaining = [item for item in active_relations if item.is_active]
+    if len(remaining) != 1 or remaining[0].service_id != service.id:
+        raise RuntimeError(
+            f"UAT provider has an unexpected active service mapping: {provider.profile_code}"
+        )
+    return relation
+
+
 def seed():
     app = create_app()
     _assert_uat_target(app)
@@ -200,15 +254,9 @@ def seed():
             relation = ProviderService.query.filter_by(
                 provider_id=provider.id, service_id=services[slug].id
             ).first()
-            if relation is None:
-                db.session.add(ProviderService(provider_id=provider.id, service_id=services[slug].id, is_active=True))
-                relation_counts["created"] += 1
-            else:
-                relation.is_active = True
-                relation_counts["reused"] += 1
-            active_relations = ProviderService.query.filter_by(provider_id=provider.id, is_active=True).all()
-            if len(active_relations) != 1 or active_relations[0].service_id != services[slug].id:
-                raise RuntimeError(f"UAT provider has an unexpected active service mapping: {profile_code}")
+            relation_was_present = relation is not None
+            _ensure_provider_service(provider, services[slug])
+            relation_counts["reused" if relation_was_present else "created"] += 1
 
         customers = {}
         customer_counts = {"created": 0, "reused": 0}
