@@ -3,8 +3,8 @@
   <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Tedile | Provider profile</title><link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" /></head>
   <body class="marketplace-page">
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <header class="site-header"><a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a><nav class="header-actions"><a href="{{ url_for('auth.login_page') }}#results">Back to results</a></nav></header>
+    <header class="site-header"><a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a><nav class="header-actions profile-header-actions"><a href="{{ url_for('customer.dashboard') }}#results">Back to Results</a>{% if session.get('user', {}).get('role') == 'customer' %}<a href="{{ url_for('customer.dashboard') }}">Dashboard</a><form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="button button-quiet" type="submit">Log out</button></form>{% endif %}</nav></header>
     <main class="profile-shell" id="provider-profile" data-profile-code="{{ profile_code }}"><div class="loading-panel">Loading provider profile…</div></main>
-    <script src="{{ url_for('static', filename='customer.js') }}"></script>
+    <script src="{{ url_for('static', filename='customer.js', v='20260829-6') }}"></script>
   </body>
 </html>

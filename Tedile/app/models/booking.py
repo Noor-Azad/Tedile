@@ -19,6 +19,9 @@ class Booking(db.Model):
     status = db.Column(db.String(40), default="pending")  # pending | confirmed | completed | cancelled
     scheduled_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
+    customer_latitude = db.Column(db.Float)
+    customer_longitude = db.Column(db.Float)
+    customer_location_label = db.Column(db.String(160))
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -52,4 +55,6 @@ class Booking(db.Model):
             "status": self.status,
             "scheduled_at": self.scheduled_at.isoformat() if self.scheduled_at else None,
             "notes": self.notes,
+            "customer_location_label": self.customer_location_label,
+            "customer_location_available": self.customer_latitude is not None and self.customer_longitude is not None,
         }

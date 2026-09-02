@@ -13,11 +13,43 @@
     </header>
     <main class="dashboard-shell">
       <section class="dashboard-intro"><p class="eyebrow">YOUR TEDILE</p><h1>Bookings, without the back-and-forth.</h1><p>Keep an eye on every request and the people helping you get it done.</p><a class="button button-primary" href="#services">Find another service</a></section>
+      <section class="hero-shell" aria-labelledby="provider-search-title">
+        <div class="hero-copy">
+          <p class="eyebrow">LOCAL HELP, CLOSER TO HOME</p>
+          <h2 id="provider-search-title">Find a trusted provider near you.</h2>
+          <p class="hero-lede">Tell us what you need and where you are. We’ll prioritize providers nearby and expand the search when needed.</p>
+          <form class="hero-search" id="hero-search-form">
+            <label class="search-field">Location<div><input id="hero-location" name="location" type="text" placeholder="City or locality, e.g. Malda" autocomplete="address-level2" required /><button class="button button-quiet" id="use-current-location" type="button">Use my current location</button></div></label>
+            <label class="search-field">What do you need?<input id="hero-keyword" name="keyword" type="search" placeholder="Plumber, tutor, electrician" /></label>
+            <button class="button button-primary" type="submit">Search providers</button>
+          </form>
+        </div>
+      </section>
       <section class="content-section" id="services"><div class="section-heading"><div><p class="eyebrow">SERVICES</p><h2>Find help for your next task</h2><p>Browse the services currently available through Tedile.</p></div></div><div class="service-rail" id="popular-services" aria-label="Popular services" tabindex="0"></div><div class="service-groups" id="service-groups"></div></section>
-      <section class="booking-section"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Upcoming and past bookings</h2></div></div><div class="booking-grid" id="booking-grid">
-        {% for booking in bookings %}<article class="booking-card"><div class="booking-card-top"><span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span><span class="booking-reference">{{ booking.reference }}</span></div><h3>{{ booking.provider.name }}</h3><p>{{ booking.service.name }}</p>{% if booking.scheduled_at %}<p class="booking-time">{{ booking.scheduled_at }}</p>{% endif %}{% if booking.notes %}<p class="booking-notes">{{ booking.notes }}</p>{% endif %}</article>{% else %}<div class="empty-state"><span class="empty-mark">+</span><h3>Your next useful connection starts here.</h3><p>Browse services and send your first request when you’re ready.</p><a class="button button-secondary" href="#services">Browse services</a></div>{% endfor %}
+      <section class="results-section" id="results">
+  <div class="section-heading results-heading">
+    <div>
+      <p class="eyebrow">PROVIDERS</p>
+      <h2>Find a service provider</h2>
+      <p id="hero-status">Choose a service to see available providers.</p>
+    </div>
+    <div class="results-controls">
+      <select id="sort-select" aria-label="Sort providers">
+        <option value="rating-high">Highest rated</option>
+        <option value="distance">Nearest</option>
+        <option value="price-low">Lowest price</option>
+        <option value="experience">Most experienced</option>
+      </select>
+    </div>
+  </div>
+  <div id="provider-results" class="provider-grid"></div>
+  <button class="button button-secondary" id="load-more" type="button" hidden>Load more</button>
+</section>
+
+<section class="booking-section"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Upcoming and past bookings</h2></div></div><div class="booking-grid" id="booking-grid">
+        {% for booking in bookings %}<article class="booking-card"><div class="booking-card-top"><span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span><span class="booking-reference">{{ booking.reference }}</span></div><h3>{{ booking.provider.name }}</h3><p>{{ booking.service.name }}</p>{% if booking.scheduled_at %}<p class="booking-time">{{ booking.scheduled_at }}</p>{% endif %}{% if booking.notes %}<p class="booking-notes">{{ booking.notes }}</p>{% endif %}{% if booking.status == 'completed' %}{% if booking.review %}<p>Your rating: {{ booking.review.rating }}/5{% if booking.review.comment %} — {{ booking.review.comment }}{% endif %}</p>{% else %}<form class="review-form" method="POST" action="{{ url_for('customer.review_booking', booking_reference=booking.reference) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><label>Rate provider <select name="rating" required><option value="">Stars</option>{% for star in range(1, 6) %}<option value="{{ star }}">{{ star }}</option>{% endfor %}</select></label><label>Review (optional)<textarea name="comment" maxlength="2000"></textarea></label><button class="button button-secondary" type="submit">Submit rating</button></form>{% endif %}{% endif %}</article>{% else %}<div class="empty-state"><span class="empty-mark">+</span><h3>Your next useful connection starts here.</h3><p>Browse services and send your first request when you’re ready.</p><a class="button button-secondary" href="#services">Browse services</a></div>{% endfor %}
       </div></section>
     </main>
-    <script src="{{ url_for('static', filename='customer.js') }}"></script>
+    <script src="{{ url_for('static', filename='customer.js', v='20260829-6') }}"></script><script src="{{ url_for('static', filename='reviews.js', v='20260829-6') }}"></script>
   </body>
 </html>

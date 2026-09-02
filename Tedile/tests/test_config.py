@@ -28,6 +28,18 @@ def test_development_console_otp_is_accepted(monkeypatch):
     assert config.DevelopmentConfig().OTP_DELIVERY_PROVIDER == "console"
 
 
+def test_database_url_from_environment_uses_postgresql(monkeypatch):
+    config = load_config(
+        monkeypatch,
+        "development",
+        DATABASE_URL="postgresql://tedile_dev_user:secret@127.0.0.1:5432/tedile_dev",
+        OTP_REQUIRED="true",
+        OTP_DELIVERY_PROVIDER="console",
+    )
+
+    assert config.DevelopmentConfig().SQLALCHEMY_DATABASE_URI.startswith("postgresql://")
+
+
 def test_development_app_logger_allows_info(monkeypatch):
     monkeypatch.setenv("APP_ENV", "development")
     from app import create_app
@@ -135,6 +147,8 @@ def test_unknown_environment_fails_clearly(monkeypatch):
 
 @pytest.mark.parametrize("app_env", ["uat", "production"])
 def test_deployed_environment_requires_database_url(monkeypatch, app_env):
+    # Bypass project-local .env for this negative configuration test.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
     config = load_config(
         monkeypatch,
         app_env,

@@ -44,44 +44,123 @@
           {% endfor %}
         </div>
       </section>
-      {% elif user.role == 'provider' %}
-      <section class="card">
-        <h2>Provider profile</h2>
+            {% elif user.role == 'provider' %}
+      <section class="dashboard-shell">
         {% if provider %}
-        <p>Rating: {{ provider.rating }} · Jobs completed: {{ provider.jobs_completed }}</p>
-        <form method="POST" action="{{ url_for('provider.update_availability') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <select name="availability">
-            <option value="available" {% if provider.availability == 'available' %}selected{% endif %}>Available</option>
-            <option value="busy" {% if provider.availability == 'busy' %}selected{% endif %}>Busy</option>
-            <option value="offline" {% if provider.availability == 'offline' %}selected{% endif %}>Offline</option>
-          </select>
-          <button type="submit">Update</button>
-        </form>
-        {% else %}
-        <p>No provider profile linked to this account yet.</p>
-        {% endif %}
-      </section>
 
-      <section class="card">
-        <h2>Incoming bookings</h2>
-        {% for booking in bookings %}
-        <div class="booking-row">
-          <span>{{ booking.customer_name }} · {{ booking.service.name }}</span>
-          <span class="badge">{{ booking.status }}</span>
-          <form method="POST" action="{{ url_for('provider.update_booking_status', booking_reference=booking.reference) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <select name="status">
-              <option value="confirmed">Confirm</option>
-              <option value="completed">Complete</option>
-              <option value="cancelled">Cancel</option>
-            </select>
-            <button type="submit">Update</button>
-          </form>
-        </div>
+        <section class="dashboard-intro">
+          <p class="eyebrow">YOUR TEDILE</p>
+          <h1>Welcome, {{ provider.name }}</h1>
+          <p>Manage your availability and respond to customer booking requests.</p>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">PROFILE</p>
+              <h2>Your provider profile</h2>
+            </div>
+            <span class="status-pill">{{ provider.availability }}</span>
+          </div>
+
+          <div class="booking-grid">
+            <article class="booking-card">
+              <p class="eyebrow">RATING</p>
+              <h3>★ {{ provider.rating }}</h3>
+              <p>{{ provider.reviews_count }} customer reviews</p>
+            </article>
+
+            <article class="booking-card">
+              <p class="eyebrow">EXPERIENCE</p>
+              <h3>{{ provider.experience_years }} years</h3>
+              <p>{{ provider.jobs_completed }} jobs completed</p>
+            </article>
+
+            <article class="booking-card">
+              <p class="eyebrow">AVAILABILITY</p>
+              <form class="availability-form" method="POST" action="{{ url_for('provider.update_availability') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <select name="availability">
+                  <option value="available" {% if provider.availability == 'available' %}selected{% endif %}>Available</option>
+                  <option value="busy" {% if provider.availability == 'busy' %}selected{% endif %}>Busy</option>
+                  <option value="offline" {% if provider.availability == 'offline' %}selected{% endif %}>Offline</option>
+                </select>
+                <button class="button button-primary" type="submit">Update availability</button>
+                <p class="success-banner" data-availability-message role="status" aria-live="polite"></p>
+              </form>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-section booking-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">BOOKING REQUESTS</p>
+              <h2>Incoming bookings</h2>
+              <p>Review customer requests and update their status.</p>
+            </div>
+          </div>
+
+          <div class="booking-grid">
+            {% for booking in bookings %}
+            <article class="booking-card">
+              <div class="booking-card-top">
+                <span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span>
+                <span class="booking-reference">{{ booking.reference }}</span>
+              </div>
+
+              <h3>{{ booking.service.name }}</h3>
+              <p><strong>Customer:</strong> {{ booking.customer_name }}</p>
+              {% if booking.customer_location_label %}<p><strong>Location:</strong> {{ booking.customer_location_label }}</p>{% endif %}
+              {% if booking.customer_location_available %}<a class="button button-quiet full-button customer-directions" href="{{ url_for('provider.customer_directions', booking_reference=booking.reference) }}">Get Directions</a>{% endif %}
+
+              {% if booking.scheduled_at %}
+              <p><strong>Scheduled:</strong> {{ booking.scheduled_at }}</p>
+              {% endif %}
+
+              {% if booking.notes %}
+              <p class="booking-notes">{{ booking.notes }}</p>
+              {% endif %}
+
+              {% if booking.status == 'completed' %}
+                {% if booking.review %}<p>Your rating: {{ booking.review.rating }}/5{% if booking.review.comment %} — {{ booking.review.comment }}{% endif %}</p>
+                {% else %}<form class="review-form" method="POST" action="{{ url_for('provider.review_booking', booking_reference=booking.reference) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><label>Rate customer <select name="rating" required><option value="">Stars</option>{% for star in range(1, 6) %}<option value="{{ star }}">{{ star }}</option>{% endfor %}</select></label><label>Review (optional)<textarea name="comment" maxlength="2000"></textarea></label><button class="button button-secondary" type="submit">Submit rating</button></form>{% endif %}
+              {% endif %}
+
+              {% if booking.status in ('pending', 'confirmed') %}
+              <form class="booking-status-form" method="POST" action="{{ url_for('provider.update_booking_status', booking_reference=booking.reference) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <select name="status">
+                  {% if booking.status == 'pending' %}
+                  <option value="confirmed">Confirm</option>
+                  <option value="cancelled">Cancel</option>
+                  {% elif booking.status == 'confirmed' %}
+                  <option value="completed">Complete</option>
+                  {% endif %}
+                </select>
+                <button class="button button-primary" type="submit">Update booking</button>
+              </form>
+              {% endif %}
+            </article>
+
+            {% else %}
+            <div class="empty-state">
+              <span class="empty-mark">+</span>
+              <h3>No booking requests yet.</h3>
+              <p>New customer requests will appear here.</p>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+
         {% else %}
-        <p>No bookings yet.</p>
-        {% endfor %}
+        <section class="content-section">
+          <div class="empty-state">
+            <h3>No provider profile linked to this account yet.</h3>
+            <p>Please complete provider onboarding.</p>
+          </div>
+        </section>
+        {% endif %}
       </section>
       {% else %}
       <section class="card">
@@ -102,6 +181,6 @@
       </section>
       {% endif %}
     </main>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js', v='20260829-3') }}"></script><script src="{{ url_for('static', filename='reviews.js', v='20260829-3') }}"></script>
   </body>
 </html>

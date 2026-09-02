@@ -3,10 +3,9 @@
 A local service-provider marketplace app — find and book verified plumbers,
 electricians, tutors, and other local professionals near you.
 
-Built as a companion project to BengalLearningCenter, following the same
-production-ready structure (Flask + SQLAlchemy + S3 + Capacitor mobile
-wrapper), but for a different domain: connecting customers with local
-service providers.
+Built as a production-ready Flask marketplace with SQLAlchemy, S3, and
+Capacitor mobile wrappers for connecting customers with local service
+providers.
 
 ## Features
 
@@ -132,7 +131,7 @@ signup/onboarding (`Provider` rows linked to a `User` with role `provider`).
 
 See [mobile/README.md](mobile/README.md). The mobile wrapper uses Capacitor to
 load the same Flask web app inside a native shell, exactly like
-BengalLearningCenter's mobile setup, just re-branded and pointed at Tedile's
+the mobile setup, branded for Tedile and pointed at Tedile's
 backend.
 
 ## Tests

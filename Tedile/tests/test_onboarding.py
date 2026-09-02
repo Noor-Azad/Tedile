@@ -213,6 +213,7 @@ def test_otp_attempts_and_resends_are_rate_limited(app, client, monkeypatch):
 
 
 def test_console_otp_is_only_emitted_to_server_logs(app, client, caplog):
+    app.config["APP_ENV"] = "development"
     app.config["OTP_DELIVERY_PROVIDER"] = "console"
     with caplog.at_level("INFO", logger="app"):
         response = begin_login(client, "console-otp@example.com")

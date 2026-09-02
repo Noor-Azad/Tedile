@@ -62,4 +62,38 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('provider-results')) {
     searchProviders();
   }
+
+  document.querySelectorAll('.availability-form').forEach(form => {
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = form.querySelector('[data-availability-message]');
+      const selected = form.elements.availability.value;
+      const label = selected.charAt(0).toUpperCase() + selected.slice(1);
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new URLSearchParams(new FormData(form)),
+          credentials: 'same-origin',
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to update availability.');
+        message.className = 'success-banner';
+        message.textContent = `Availability updated to ${label}.`;
+        form.closest('.booking-grid').parentElement.querySelector('.status-pill').textContent = selected;
+      } catch (error) {
+        message.className = 'error-banner';
+        message.textContent = error.message || 'Unable to update availability.';
+      }
+    });
+  });
+
+  document.querySelectorAll('.booking-status-form').forEach(form => {
+    form.addEventListener('submit', event => {
+      if (form.elements.status.value === 'cancelled' &&
+          !window.confirm('Are you sure you want to cancel this booking?')) {
+        event.preventDefault();
+      }
+    });
+  });
+
 });
