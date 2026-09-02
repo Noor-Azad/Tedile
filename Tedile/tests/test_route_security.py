@@ -118,9 +118,9 @@ def test_customer_dashboard_contains_location_provider_search_form(app, client):
     script = client.get("/static/customer.js").data
     assert b"navigator.geolocation.getCurrentPosition" in script
     assert b"Location access was denied." in script
-    assert b"sessionStorage.setItem(SEARCH_LOCATION_STORAGE_KEY" in script
-    assert b"sessionStorage.setItem(BOOKING_LOCATION_STORAGE_KEY" in script
-    assert b"restoreLocations();" in script
+    assert b"sessionStorage" not in script
+    assert b"localStorage" not in script
+    assert b"customer_latitude" in script and b"customer_longitude" in script
 
 
 def test_provider_profile_loads_current_location_aware_customer_script(app, client):

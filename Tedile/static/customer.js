@@ -12,31 +12,14 @@ const state = {
   keyword: '',
   loading: false,
 };
-const SEARCH_LOCATION_STORAGE_KEY = 'tedile_search_location';
-const BOOKING_LOCATION_STORAGE_KEY = 'tedile_booking_location';
-
 function setSearchLocation(location, label) {
   state.searchLocation = location;
   state.searchLocationLabel = label || location.city || 'your selected location';
-  sessionStorage.setItem(SEARCH_LOCATION_STORAGE_KEY, JSON.stringify({ latitude: location.latitude, longitude: location.longitude, label: state.searchLocationLabel }));
 }
 
 function setBookingLocation(location, label) {
   state.bookingLocation = location;
   state.bookingLocationLabel = label || location.city || 'your service location';
-  sessionStorage.setItem(BOOKING_LOCATION_STORAGE_KEY, JSON.stringify({ latitude: location.latitude, longitude: location.longitude, label: state.bookingLocationLabel }));
-}
-
-function restoreLocations() {
-  try {
-    const search = JSON.parse(sessionStorage.getItem(SEARCH_LOCATION_STORAGE_KEY) || 'null');
-    const booking = JSON.parse(sessionStorage.getItem(BOOKING_LOCATION_STORAGE_KEY) || 'null');
-    if (search && Number.isFinite(search.latitude) && Number.isFinite(search.longitude)) { state.searchLocation = search; state.searchLocationLabel = search.label || 'your selected location'; }
-    if (booking && Number.isFinite(booking.latitude) && Number.isFinite(booking.longitude)) { state.bookingLocation = booking; state.bookingLocationLabel = booking.label || 'your service location'; }
-  } catch (_) {
-    sessionStorage.removeItem(SEARCH_LOCATION_STORAGE_KEY);
-    sessionStorage.removeItem(BOOKING_LOCATION_STORAGE_KEY);
-  }
 }
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
@@ -231,7 +214,6 @@ if (response.ok) {
 }}
 
 document.addEventListener('DOMContentLoaded', () => {
-  restoreLocations();
   loadServices().catch(() => { const groups = document.getElementById('service-groups'); if (groups) groups.innerHTML = '<div class="error-state">Unable to load services.</div>'; });
   const form = document.getElementById('hero-search-form');
   form?.addEventListener('submit', async (event) => {
