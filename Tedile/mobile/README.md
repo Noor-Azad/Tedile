@@ -17,7 +17,7 @@ npx cap add ios
 
 This generates the `android/` and `ios/` native projects (gitignored build
 output only — the generated project folders are checked in so Xcode/Android
-Studio can open them directly, matching the BengalLearningCenter layout).
+Studio can open them directly as generated native projects).
 
 ## Point at your backend
 
