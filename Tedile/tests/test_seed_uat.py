@@ -1,6 +1,6 @@
 import pytest
 
-from database.seed_uat import _assert_connected_database, _assert_uat_target
+from database.seed_uat import UAT_PASSWORD, UAT_CUSTOMERS, UAT_PROVIDERS, _assert_connected_database, _assert_uat_target
 
 
 class FakeApp:
@@ -21,6 +21,21 @@ def uat_app(**overrides):
 def test_uat_guard_accepts_explicit_remote_uat_database():
     _assert_uat_target(uat_app())
     _assert_connected_database(uat_app(), "tedile_uat")
+
+
+def test_uat_credentials_are_the_approved_synthetic_accounts():
+    assert UAT_PASSWORD == "Test@1234"
+    assert {email for email, _name in UAT_CUSTOMERS} == {
+        "uat.customer01@tedile.com",
+        "uat.customer02@tedile.com",
+        "uat.customer03@tedile.com",
+    }
+    assert {email for _profile, email, _name, _slug, _lat, _lon in UAT_PROVIDERS} == {
+        "uat.plumber01@tedile.com",
+        "uat.electrician01@tedile.com",
+        "uat.welder01@tedile.com",
+        "uat.acrepair01@tedile.com",
+    }
 
 
 @pytest.mark.parametrize("overrides", [

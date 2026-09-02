@@ -25,7 +25,7 @@ from app.models.user import User
 from sqlalchemy import text
 
 
-UAT_PASSWORD = "UatOnlyPassword123!"
+UAT_PASSWORD = "Test@1234"
 
 # These are synthetic reference points within the South Dinajpur test area.
 # They deliberately cover Daulatpur, Buniadpur, Gangarampur, and Balurghat so
@@ -47,16 +47,16 @@ UAT_SERVICES = (
 )
 
 UAT_PROVIDERS = (
-    ("UAT-PLUMBER-01", "uat.plumber01@tedile.test", "UAT Plumber 1", "plumber", 25.3300, 88.5250),
-    ("UAT-ELECTRICIAN-01", "uat.electrician01@tedile.test", "UAT Electrician 1", "electrician", 25.3990, 88.6200),
-    ("UAT-WELDER-01", "uat.welder01@tedile.test", "UAT Welder 1", "welder", 25.4000, 88.5250),
-    ("UAT-AC-REPAIR-01", "uat.acrepair01@tedile.test", "UAT AC/Fridge Repair 1", "ac-repair", 25.2373, 88.7831),
+    ("UAT-PLUMBER-01", "uat.plumber01@tedile.com", "UAT Plumber 1", "plumber", 25.3300, 88.5250),
+    ("UAT-ELECTRICIAN-01", "uat.electrician01@tedile.com", "UAT Electrician 1", "electrician", 25.3990, 88.6200),
+    ("UAT-WELDER-01", "uat.welder01@tedile.com", "UAT Welder 1", "welder", 25.4000, 88.5250),
+    ("UAT-AC-REPAIR-01", "uat.acrepair01@tedile.com", "UAT AC/Fridge Repair 1", "ac-repair", 25.2373, 88.7831),
 )
 
 UAT_CUSTOMERS = (
-    ("uat.customer01@tedile.test", "UAT Customer 1"),
-    ("uat.customer02@tedile.test", "UAT Customer 2"),
-    ("uat.customer03@tedile.test", "UAT Customer 3"),
+    ("uat.customer01@tedile.com", "UAT Customer 1"),
+    ("uat.customer02@tedile.com", "UAT Customer 2"),
+    ("uat.customer03@tedile.com", "UAT Customer 3"),
 )
 
 
@@ -219,8 +219,8 @@ def seed():
         bookings = []
         booking_counts = {"created": 0, "reused": 0}
         booking_specs = (
-            ("[UAT-SEED:pending-plumber]", "uat.customer01@tedile.test", "plumber", "pending", UAT_LOCATIONS[0]),
-            ("[UAT-SEED:completed-ac-repair]", "uat.customer02@tedile.test", "ac-repair", "completed", UAT_LOCATIONS[1]),
+            ("[UAT-SEED:pending-plumber]", "uat.customer01@tedile.com", "plumber", "pending", UAT_LOCATIONS[0]),
+            ("[UAT-SEED:completed-ac-repair]", "uat.customer02@tedile.com", "ac-repair", "completed", UAT_LOCATIONS[1]),
         )
         for marker, customer_email, slug, status, location in booking_specs:
             booking, created = _get_or_create_booking(
