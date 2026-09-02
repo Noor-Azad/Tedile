@@ -40,6 +40,10 @@ function restoreLocations() {
 }
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+const providerInitials = (name) => {
+  const initials = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  return initials || 'Tedile';
+};
 const iconFor = (service) => escapeHtml(service.icon_key || 'spark');
 
 async function loadServices() {
@@ -160,7 +164,7 @@ async function loadProfile() {
     const response = await fetch(`/api/providers/${encodeURIComponent(target.dataset.profileCode)}`);
     if (!response.ok) throw new Error('Provider profile not found.');
     const provider = await response.json();
-    const photo = provider.profile_photo_url ? `<img class="profile-photo" loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" data-image-fallback />` : '<div class="profile-photo photo-fallback">?</div>';
+    const photo = provider.profile_photo_url ? `<img class="profile-photo" loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" data-image-fallback />` : `<div class="profile-photo photo-fallback" role="img" aria-label="Provider avatar">${escapeHtml(providerInitials(provider.name))}</div>`;
     target.innerHTML = `<div class="profile-card"><div class="profile-visual">${photo}</div><div class="profile-content"><p class="eyebrow">LOCAL PROFESSIONAL</p><h1>${escapeHtml(provider.name)} ${provider.verified ? '<span class="verified-mark">✓</span>' : ''}</h1><p class="provider-location">${escapeHtml([provider.city, provider.state].filter(Boolean).join(', '))}</p><div class="profile-stats"><span>★ ${escapeHtml(provider.rating || '—')} · ${escapeHtml(provider.reviews_count || 0)} reviews</span><span>${escapeHtml(provider.experience_years || 0)} years experience</span><span>${escapeHtml(provider.jobs_completed || 0)} jobs completed</span></div><div class="profile-rate">${provider.hourly_rate != null ? `₹${escapeHtml(provider.hourly_rate)} / hour` : 'Rate on request'}</div><button class="button button-primary" type="button" id="start-booking">Request this provider</button><p class="profile-note">Contact details are shared only after an authorized booking is confirmed.</p></div></div><div class="booking-panel" id="booking-panel" hidden><p class="eyebrow">BOOK A VISIT</p><h2>Tell us when you need help.</h2><form id="booking-form"><label>Date and time<input type="datetime-local" name="scheduled_at" required /></label><label>Notes<textarea name="notes" rows="4" placeholder="Add helpful details about the job"></textarea></label><input type="hidden" name="provider_profile_code" value="${escapeHtml(provider.id)}" /><label>Service<select name="service_slug" id="booking-service" required><option value="">Loading services…</option></select></label><fieldset class="booking-location"><legend>Service location</legend><button class="button button-quiet" type="button" id="use-booking-current-location">Use my current location</button><button class="button button-quiet" type="button" id="use-booking-search-location">Use selected search location</button><p class="form-status" id="booking-location-status"></p></fieldset><button class="button button-primary" type="submit">Send booking request</button><p class="form-status" id="booking-status"></p></form></div>`;
     attachImageErrorFallbacks(target);
     const bookingService = document.getElementById('booking-service');

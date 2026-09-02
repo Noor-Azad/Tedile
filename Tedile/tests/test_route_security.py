@@ -130,6 +130,25 @@ def test_provider_profile_loads_current_location_aware_customer_script(app, clie
         assert b"customer.js?v=20260829-6" in page.data
 
 
+def test_provider_profile_has_customer_navigation_and_neutral_avatar_fallback(app, client):
+    anonymous = client.get("/providers/PROFILE-LOCATION")
+    assert b'href="/customer/dashboard#results"' in anonymous.data
+    assert b'href="/customer/dashboard"' not in anonymous.data
+    assert b'action="/logout"' not in anonymous.data
+    script = client.get("/static/customer.js").data
+    assert b"providerInitials" in script
+    assert b"role=\"img\" aria-label=\"Provider avatar\"" in script
+    assert b">?</div>" not in script
+
+    account = user("profile-customer@example.com", "customer")
+    set_session(client, account)
+    authenticated = client.get("/providers/PROFILE-LOCATION")
+    assert b'href="/customer/dashboard#results"' in authenticated.data
+    assert b'href="/customer/dashboard"' in authenticated.data
+    assert b'method="POST" action="/logout"' in authenticated.data
+    assert b'name="csrf_token"' in authenticated.data
+
+
 def test_public_profile_contains_only_public_fields(app, client):
     with app.app_context():
         record = provider("PROFILE-1")
