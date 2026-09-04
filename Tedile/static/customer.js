@@ -213,6 +213,28 @@ if (response.ok) {
   status.textContent = payload.error || 'Unable to send booking request.';
 }}
 
+function attachCancellation() {
+  document.querySelectorAll('.cancel-booking').forEach((button) => button.addEventListener('click', async () => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    const error = button.parentElement.querySelector('.booking-error');
+    button.disabled = true;
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    try {
+      const response = await fetch(button.dataset.cancelUrl, { method: 'POST', headers: csrf ? { 'X-CSRFToken': csrf } : {}, credentials: 'same-origin' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to cancel this booking.');
+      const pill = button.parentElement.querySelector('.status-pill');
+      pill.textContent = 'cancelled';
+      pill.className = 'status-pill status-cancelled';
+      button.remove();
+    } catch (err) {
+      button.disabled = false;
+      error.textContent = err.message;
+      error.hidden = false;
+    }
+  }));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadServices().catch(() => { const groups = document.getElementById('service-groups'); if (groups) groups.innerHTML = '<div class="error-state">Unable to load services.</div>'; });
   const form = document.getElementById('hero-search-form');
@@ -259,4 +281,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('view-all-services')?.addEventListener('click', () => document.getElementById('service-groups')?.scrollIntoView({ behavior: 'smooth' }));
   if (document.getElementById('provider-results')) searchProviders(true);
   loadProfile();
+  attachCancellation();
 });
