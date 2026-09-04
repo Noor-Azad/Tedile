@@ -14,6 +14,24 @@ from app.security import csrf_protect
 customer_bp = Blueprint("customer", __name__, url_prefix="/customer")
 
 
+def _customer_booking_access(view_fn):
+    """Hide bookings outside the logged-in customer's scope before mutation checks."""
+    @wraps(view_fn)
+    def wrapped(*args, **kwargs):
+        user = session["user"]
+        booking_id = kwargs.get("booking_id")
+        booking_reference = kwargs.get("booking_reference")
+        if booking_id is not None:
+            booking = Booking.query.filter_by(id=booking_id, customer_id=user["id"]).first()
+        else:
+            booking = next((booking for booking in Booking.query.filter_by(customer_id=user["id"]).all()
+                            if booking.public_reference == booking_reference), None)
+        if not booking:
+            return jsonify({"error": "Booking not found"}), 404
+        return view_fn(*args, **kwargs)
+    return wrapped
+
+
 def login_required(role=None):
     def decorator(view_fn):
         @wraps(view_fn)
@@ -120,6 +138,28 @@ def create_booking():
     db.session.add(booking)
     db.session.commit()
     return jsonify(booking.to_customer_dto(provider, service)), 201
+
+
+@customer_bp.route("/bookings/<booking_reference>/cancel", methods=["POST"])
+@customer_bp.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
+@login_required(role="customer")
+@_customer_booking_access
+@csrf_protect
+def cancel_booking(booking_reference=None, booking_id=None):
+    user = session["user"]
+    if booking_id is not None:
+        booking = Booking.query.filter_by(id=booking_id, customer_id=user["id"]).first()
+    else:
+        booking = next((booking for booking in Booking.query.filter_by(customer_id=user["id"]).all()
+                        if booking.public_reference == booking_reference), None)
+    if not booking:
+        return jsonify({"error": "Booking not found"}), 404
+    if booking.status not in ("pending", "confirmed"):
+        return jsonify({"error": "This booking cannot be cancelled."}), 400
+
+    booking.status = "cancelled"
+    db.session.commit()
+    return jsonify({"message": "Booking cancelled.", "status": booking.status})
 
 
 @customer_bp.route("/providers/<profile_code>/contact")

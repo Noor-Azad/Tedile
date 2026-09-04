@@ -112,7 +112,7 @@
               <h3>{{ booking.service.name }}</h3>
               <p><strong>Customer:</strong> {{ booking.customer_name }}</p>
               {% if booking.customer_location_label %}<p><strong>Location:</strong> {{ booking.customer_location_label }}</p>{% endif %}
-              {% if booking.customer_location_available %}<a class="button button-quiet full-button customer-directions" href="{{ url_for('provider.customer_directions', booking_reference=booking.reference) }}">Get Directions</a>{% endif %}
+              {% if booking.customer_location_available and booking.status in ('pending', 'confirmed') %}<a class="button button-quiet full-button customer-directions" href="{{ url_for('provider.customer_directions', booking_reference=booking.reference) }}">Get Directions</a>{% endif %}
 
               {% if booking.scheduled_at %}
               <p><strong>Scheduled:</strong> {{ booking.scheduled_at }}</p>
