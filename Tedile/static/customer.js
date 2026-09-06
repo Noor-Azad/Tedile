@@ -163,7 +163,7 @@ if (bookingService) {
 }
     document.getElementById('start-booking')?.addEventListener('click', () => { document.getElementById('booking-panel').hidden = false; });
     document.getElementById('booking-form')?.addEventListener('submit', submitBooking);
-    document.getElementById('use-booking-current-location')?.addEventListener('click', requestBookingLocation);
+    document.getElementById('use-booking-current-location')?.addEventListener('click', (event) => { event.preventDefault(); requestBookingLocation(); });
     document.getElementById('use-booking-search-location')?.addEventListener('click', () => {
       if (state.searchLocation) {
         setBookingLocation(state.searchLocation, state.searchLocationLabel || state.searchLocation.city || 'Selected search location');
@@ -252,7 +252,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (status) status.textContent = error.message || 'We could not find that location.';
     }
   });
-  document.getElementById('use-current-location')?.addEventListener('click', () => {
+  document.getElementById('use-current-location')?.addEventListener('click', (event) => {
+    event.preventDefault();
     const status = document.getElementById('hero-status');
     if (!navigator.geolocation) {
       if (status) status.textContent = 'Location is unavailable in this browser. You can search for a location manually.';
