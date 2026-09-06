@@ -99,11 +99,9 @@ function providerCard(provider) {
 }
 
 function attachDirections() {
-  document.querySelectorAll('[data-directions-provider]').forEach(button => button.addEventListener('click', async () => {
+  document.querySelectorAll('[data-directions-provider]').forEach(button => button.addEventListener('click', () => {
     const params = new URLSearchParams({ latitude: state.searchLocation.latitude, longitude: state.searchLocation.longitude });
-    const response = await fetch(`/api/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions?${params}`);
-    const payload = await response.json();
-    if (response.ok && payload.url) window.open(payload.url, '_blank', 'noopener');
+    window.location.assign(`/customer/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions?${params}`);
   }));
 }
 

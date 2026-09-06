@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <title>Tedile | Directions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <main class="directions-page" data-profile-code="{{ provider.profile_code }}" data-provider-latitude="{{ provider.latitude }}" data-provider-longitude="{{ provider.longitude }}" data-customer-latitude="{{ customer.latitude }}" data-customer-longitude="{{ customer.longitude }}">
+      <a class="button button-quiet" href="{{ url_for('customer.dashboard') }}">← Back to dashboard</a>
+      <h1>Directions to {{ provider.name }}</h1>
+      <p id="directions-status" class="form-status">Calculating route...</p>
+      <div class="map-frame">
+        <div id="directions-map" class="directions-map" role="application" aria-label="Directions map"></div>
+        <div class="map-zoom"><button id="zoom-in" type="button" aria-label="Zoom in">+</button><button id="zoom-out" type="button" aria-label="Zoom out">−</button></div>
+      </div>
+      <div class="directions-controls"><p id="directions-summary" class="form-status"></p></div>
+      <section class="turns"><h2>Turn-by-turn directions</h2><ol id="directions-steps"></ol></section>
+    </main>
+    <script src="{{ url_for('static', filename='customer_directions.js', v='20260906-1') }}"></script>
+  </body>
+</html>
