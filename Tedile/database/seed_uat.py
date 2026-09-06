@@ -166,10 +166,6 @@ def _get_or_create_booking(marker, customer, provider, service, status, location
         booking.customer_id != customer.id
         or booking.provider_id != provider.id
         or booking.service_id != service.id
-        or booking.status != status
-        or booking.customer_latitude != location[2]
-        or booking.customer_longitude != location[3]
-        or booking.customer_location_label != location[0]
     ):
         raise RuntimeError(f"UAT booking marker belongs to unexpected data: {marker}")
     return booking, created
