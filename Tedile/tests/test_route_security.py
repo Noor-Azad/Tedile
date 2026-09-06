@@ -135,7 +135,8 @@ def test_customer_directions_is_authenticated_and_uses_provider_coordinates(app,
     assert b"google.com/maps" not in page.data
     assert b"phone" not in page.data
     script = client.get("/static/customer.js").data
-    assert b"/api/providers/" not in script
+    assert b"/api/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions" not in script
+    assert b"/customer/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions" in script
     assert b"window.open" not in script
 
     class FakeResponse:
