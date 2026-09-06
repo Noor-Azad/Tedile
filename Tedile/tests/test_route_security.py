@@ -123,6 +123,52 @@ def test_customer_dashboard_contains_location_provider_search_form(app, client):
     assert b"customer_latitude" in script and b"customer_longitude" in script
 
 
+def test_customer_directions_is_authenticated_and_uses_provider_coordinates(app, client, monkeypatch):
+    customer = user("customer-directions-ui@example.com", "customer")
+    record = provider("CUSTOMER-DIRECTIONS-UI")
+    set_session(client, customer)
+
+    page = client.get(f"/customer/providers/{record.profile_code}/directions?latitude=25.1&longitude=88.2")
+    assert page.status_code == 200
+    assert b"Directions to Test Provider" in page.data
+    assert b"customer_directions.js" in page.data
+    assert b"google.com/maps" not in page.data
+    assert b"phone" not in page.data
+    script = client.get("/static/customer.js").data
+    assert b"/api/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions" not in script
+    assert b"/customer/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions" in script
+    assert b"window.open" not in script
+
+    class FakeResponse:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self):
+            return json.dumps({"code": "Ok", "routes": [{
+                "distance": 1200, "duration": 600,
+                "geometry": {"type": "LineString", "coordinates": [[88.2, 25.1], [88.1398, 25.0057]]},
+                "legs": [{"steps": [{"name": "Test Road", "distance": 1200}]}],
+            }]}).encode()
+
+    requested = []
+    def fake_urlopen(url, timeout):
+        requested.append((url, timeout))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.routes.customer.urlopen", fake_urlopen)
+    response = client.get(f"/customer/providers/{record.profile_code}/directions/route?latitude=25.1&longitude=88.2")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["provider"] == {"latitude": record.latitude, "longitude": record.longitude}
+    assert payload["customer"] == {"latitude": 25.1, "longitude": 88.2}
+    assert payload["route"]["distance_meters"] == 1200
+    assert "route/v1/driving/88.2,25.1;88.1398483,25.0057449" in requested[0][0]
+
+    assert client.get(f"/customer/providers/{record.profile_code}/directions?latitude=91&longitude=88").status_code == 400
+    assert client.get(f"/customer/providers/{record.profile_code}/directions/route?latitude=25.1&longitude=181").status_code == 400
+    client.post("/logout", data={"csrf_token": csrf_token(client)})
+    assert client.get(f"/customer/providers/{record.profile_code}/directions?latitude=25.1&longitude=88.2").status_code == 302
+
+
 def test_provider_profile_loads_current_location_aware_customer_script(app, client):
     page = client.get("/providers/PROFILE-LOCATION")
     assert page.status_code in (200, 404)

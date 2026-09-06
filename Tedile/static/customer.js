@@ -87,17 +87,21 @@ function attachImageErrorFallbacks(root) {
 function providerCard(provider) {
   const photo = provider.profile_photo_url ? `<img loading="lazy" src="${escapeHtml(provider.profile_photo_url)}" alt="" class="provider-photo" data-image-fallback /><div class="photo-fallback" hidden aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>` : `<div class="photo-fallback" aria-hidden="true">${escapeHtml((provider.name || '?').slice(0, 1))}</div>`;
   const canBook = provider.availability === 'available';
-  const action = canBook ? `<a class="button button-secondary full-button" href="/providers/${encodeURIComponent(provider.id)}">View profile</a>` : `<span class="button button-secondary full-button" aria-disabled="true">Unavailable for new bookings</span>`;
+  const profileQuery = state.searchLocation ? new URLSearchParams({
+    latitude: String(state.searchLocation.latitude),
+    longitude: String(state.searchLocation.longitude),
+    location_label: state.searchLocationLabel || state.searchLocation.city || 'Selected search location',
+  }).toString() : '';
+  const profileHref = `/providers/${encodeURIComponent(provider.id)}${profileQuery ? `?${profileQuery}` : ''}`;
+  const action = canBook ? `<a class="button button-secondary full-button" href="${escapeHtml(profileHref)}">View profile</a>` : `<span class="button button-secondary full-button" aria-disabled="true">Unavailable for new bookings</span>`;
   const directions = state.searchLocation ? `<button class="button button-quiet full-button" type="button" data-directions-provider="${escapeHtml(provider.id)}">Get Directions</button>` : '';
   return `<article class="provider-card"><div class="provider-card-top">${photo}<span class="availability ${canBook ? 'is-available' : ''}">${escapeHtml(provider.availability || 'offline')}</span></div><div class="provider-card-body"><div class="provider-name-row"><h3>${escapeHtml(provider.name)}</h3>${provider.verified ? '<span class="verified-mark" title="Verified provider">✓</span>' : ''}</div><p class="provider-location">${escapeHtml([provider.city, provider.state].filter(Boolean).join(', '))}</p><div class="provider-stats"><span>★ ${escapeHtml(provider.rating || '—')}</span><span>${escapeHtml(provider.reviews_count || 0)} reviews</span></div><div class="provider-meta"><span>${escapeHtml(provider.experience_years || 0)} yrs experience</span><span>${escapeHtml(provider.jobs_completed || 0)} jobs</span></div><div class="provider-card-footer"><strong>${provider.hourly_rate != null ? `₹${escapeHtml(provider.hourly_rate)}/hr` : 'Rate on request'}</strong><span class="distance-badge">${escapeHtml(provider.distance_bucket || 'Nearby')}</span></div>${action}${directions}</div></article>`;
 }
 
 function attachDirections() {
-  document.querySelectorAll('[data-directions-provider]').forEach(button => button.addEventListener('click', async () => {
+  document.querySelectorAll('[data-directions-provider]').forEach(button => button.addEventListener('click', () => {
     const params = new URLSearchParams({ latitude: state.searchLocation.latitude, longitude: state.searchLocation.longitude });
-    const response = await fetch(`/api/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions?${params}`);
-    const payload = await response.json();
-    if (response.ok && payload.url) window.open(payload.url, '_blank', 'noopener');
+    window.location.assign(`/customer/providers/${encodeURIComponent(button.dataset.directionsProvider)}/directions?${params}`);
   }));
 }
 
@@ -144,6 +148,15 @@ async function loadProfile() {
   const target = document.getElementById('provider-profile');
   if (!target) return;
   try {
+    const params = new URLSearchParams(window.location.search);
+    const latitude = Number(params.get('latitude'));
+    const longitude = Number(params.get('longitude'));
+    if (Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+      const location = { latitude, longitude };
+      const label = params.get('location_label') || 'Selected search location';
+      setSearchLocation(location, label);
+      setBookingLocation(location, label);
+    }
     const response = await fetch(`/api/providers/${encodeURIComponent(target.dataset.profileCode)}`);
     if (!response.ok) throw new Error('Provider profile not found.');
     const provider = await response.json();
@@ -163,7 +176,7 @@ if (bookingService) {
 }
     document.getElementById('start-booking')?.addEventListener('click', () => { document.getElementById('booking-panel').hidden = false; });
     document.getElementById('booking-form')?.addEventListener('submit', submitBooking);
-    document.getElementById('use-booking-current-location')?.addEventListener('click', requestBookingLocation);
+    document.getElementById('use-booking-current-location')?.addEventListener('click', (event) => { event.preventDefault(); requestBookingLocation(); });
     document.getElementById('use-booking-search-location')?.addEventListener('click', () => {
       if (state.searchLocation) {
         setBookingLocation(state.searchLocation, state.searchLocationLabel || state.searchLocation.city || 'Selected search location');
@@ -200,7 +213,8 @@ async function submitBooking(event) {
     data.set('customer_latitude', state.bookingLocation.latitude);
     data.set('customer_longitude', state.bookingLocation.longitude);
     data.set('customer_location_label', state.bookingLocationLabel || state.bookingLocation.city || 'Selected location');
-  }
+}
+
   if (!state.bookingLocation) {
     status.textContent = 'Choose a service location before booking.';
     return;
@@ -252,14 +266,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (status) status.textContent = error.message || 'We could not find that location.';
     }
   });
-  document.getElementById('use-current-location')?.addEventListener('click', () => {
+  document.getElementById('use-current-location')?.addEventListener('click', (event) => {
+    console.log('[location] #use-current-location click handler started');
+    event.preventDefault();
     const status = document.getElementById('hero-status');
     if (!navigator.geolocation) {
       if (status) status.textContent = 'Location is unavailable in this browser. You can search for a location manually.';
       return;
     }
     if (status) status.textContent = 'Requesting your current location…';
+    console.log('[location] calling navigator.geolocation.getCurrentPosition()');
     navigator.geolocation.getCurrentPosition(async position => {
+      console.log('[location] geolocation success', position.coords.latitude, position.coords.longitude);
       const gpsLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude };
       setSearchLocation(gpsLocation, 'Your current location');
       setBookingLocation(gpsLocation, 'Your current location');
@@ -268,13 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
       await searchProviders(true);
       document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
     }, error => {
+      console.log('[location] geolocation error', error.code, error.message);
       const message = error.code === 1
         ? 'Location access was denied. You can search for a location manually.'
         : error.code === 3
           ? 'Location request timed out. You can search for a location manually.'
           : 'We could not determine your location. You can search for a location manually.';
       if (status) status.textContent = message;
-    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }, { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 });
   });
   document.getElementById('sort-select')?.addEventListener('change', (event) => { state.sort = event.target.value; searchProviders(true); });
   document.getElementById('load-more')?.addEventListener('click', () => searchProviders(false));

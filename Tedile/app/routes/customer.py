@@ -1,7 +1,12 @@
 from functools import wraps
 from datetime import datetime
+import json
+import math
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import urlopen
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from app.extensions import db
 from app.models.booking import Booking
@@ -61,6 +66,74 @@ def dashboard():
             dto["review"] = {"rating": review.rating, "comment": review.comment} if review else None
             booking_dtos.append(dto)
     return render_template("customer_dashboard.html", user=user, bookings=booking_dtos)
+
+
+def _valid_coordinates(latitude, longitude):
+    return (
+        latitude is not None and longitude is not None
+        and math.isfinite(latitude) and math.isfinite(longitude)
+        and -90 <= latitude <= 90 and -180 <= longitude <= 180
+    )
+
+
+def _customer_directions_provider(profile_code):
+    provider = Provider.query.filter_by(profile_code=profile_code, is_active=True).first()
+    if not provider or not _valid_coordinates(provider.latitude, provider.longitude):
+        return None
+    return provider
+
+
+@customer_bp.route("/providers/<profile_code>/directions")
+@login_required(role="customer")
+def provider_directions_page(profile_code):
+    provider = _customer_directions_provider(profile_code)
+    if not provider:
+        return jsonify({"error": "Provider location is unavailable"}), 404
+    latitude = request.args.get("latitude", type=float)
+    longitude = request.args.get("longitude", type=float)
+    if not _valid_coordinates(latitude, longitude):
+        return jsonify({"error": "Valid customer location coordinates are required"}), 400
+    return render_template(
+        "customer_directions.html",
+        provider={"profile_code": provider.profile_code, "name": provider.name,
+                  "latitude": provider.latitude, "longitude": provider.longitude},
+        customer={"latitude": latitude, "longitude": longitude},
+    )
+
+
+@customer_bp.route("/providers/<profile_code>/directions/route")
+@login_required(role="customer")
+def provider_directions_route(profile_code):
+    provider = _customer_directions_provider(profile_code)
+    if not provider:
+        return jsonify({"error": "Provider location is unavailable"}), 404
+    latitude = request.args.get("latitude", type=float)
+    longitude = request.args.get("longitude", type=float)
+    if not _valid_coordinates(latitude, longitude):
+        return jsonify({"error": "Valid customer location coordinates are required"}), 400
+    response = {
+        "provider": {"latitude": provider.latitude, "longitude": provider.longitude},
+        "customer": {"latitude": latitude, "longitude": longitude},
+    }
+    route_base = current_app.config["ROUTING_SERVICE_URL"].rstrip("/")
+    route_url = route_base + "/route/v1/driving/" + quote(
+        f"{longitude},{latitude};{provider.longitude},{provider.latitude}", safe=",;.-"
+    ) + "?overview=full&geometries=geojson&steps=true"
+    try:
+        with urlopen(route_url, timeout=8) as route_response:
+            route_payload = json.load(route_response)
+        route = (route_payload.get("routes") or [None])[0]
+        if route_payload.get("code") != "Ok" or not route:
+            raise ValueError("No route")
+        response["route"] = {
+            "distance_meters": route.get("distance"),
+            "duration_seconds": route.get("duration"),
+            "geometry": route.get("geometry"),
+            "steps": [step for leg in route.get("legs", []) for step in leg.get("steps", [])],
+        }
+    except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, KeyError):
+        response["route"] = {"available": False}
+    return jsonify(response)
 
 
 @customer_bp.route("/bookings", methods=["POST"])
