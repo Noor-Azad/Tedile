@@ -15,7 +15,8 @@
     if (!valid(points?.provider) || !valid(points?.customer)) throw new Error('The booking location could not be displayed.');
     const a = { latitude: Number(points.provider.latitude), longitude: Number(points.provider.longitude) };
     const b = { latitude: Number(points.customer.latitude), longitude: Number(points.customer.longitude) };
-    const geometry = points.route?.geometry?.coordinates || [[a.longitude, a.latitude], [b.longitude, b.latitude]];
+    const routeGeometry = points.route?.geometry?.coordinates;
+    const geometry = routeGeometry?.length ? routeGeometry : [[a.longitude, a.latitude], [b.longitude, b.latitude]];
     const routePoints = geometry.map((point) => ({ latitude: Number(point[1]), longitude: Number(point[0]) })).filter(valid);
     const all = [a, b, ...routePoints];
     const minLat = Math.min(...all.map((point) => point.latitude)), maxLat = Math.max(...all.map((point) => point.latitude));
@@ -37,11 +38,17 @@
       .then(({ response, payload }) => {
         if (!response.ok) throw new Error(payload.error || 'Directions unavailable.');
         if (!valid(payload.provider) || !valid(payload.customer)) throw new Error('The booking location could not be displayed.');
-        if (!payload.route?.geometry?.coordinates?.length) throw new Error("Route unavailable. We couldn't calculate a road route right now. Please try again.");
-        points = payload; render(); status.textContent = position ? 'Using your current location.' : 'Using your saved provider location.';
+        points = payload;
+        render();
+        status.textContent = position ? 'Using your current location.' : 'Using your saved provider location.';
+        if (payload.route?.available === false || !payload.route?.geometry?.coordinates?.length) {
+          status.textContent = "Route unavailable. We couldn't calculate a road route right now. Please try again.";
+          summary.textContent = '';
+          return;
+        }
         const hours = Math.floor(payload.route.duration_seconds / 3600), minutes = Math.round((payload.route.duration_seconds % 3600) / 60);
         summary.textContent = `Road distance: ${(payload.route.distance_meters / 1000).toFixed(1)} km · Estimated travel time: ${hours ? `${hours} hr ` : ''}${minutes} min`;
-      }).catch((error) => { status.textContent = error.message; summary.textContent = ''; map.innerHTML = '<p class="map-fallback">This booking has no usable location data.</p>'; });
+      }).catch((error) => { status.textContent = error.message; summary.textContent = ''; if (!points) map.innerHTML = '<p class="map-fallback">This booking has no usable location data.</p>'; });
   }
   document.getElementById('center-provider')?.addEventListener('click', () => { if (points) render(); });
   document.getElementById('zoom-in')?.addEventListener('click', () => { zoom = Math.min(3, zoom + 1); if (points) render(); });
