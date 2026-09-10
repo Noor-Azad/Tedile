@@ -52,6 +52,7 @@ def create_app():
     from app.models.location import Location  # noqa: F401
     from app.models.booking import Booking  # noqa: F401
     from app.models.review import Review  # noqa: F401
+    from app.models.notification import Notification  # noqa: F401
 
     # Schema is managed exclusively via Alembic migrations (see migrations/), not db.create_all().
 
@@ -60,12 +61,14 @@ def create_app():
     from app.routes.provider import provider_bp
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
+    from app.routes.notifications import notifications_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(customer_bp)
     app.register_blueprint(provider_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(notifications_bp)
 
     @app.after_request
     def add_security_headers(response):

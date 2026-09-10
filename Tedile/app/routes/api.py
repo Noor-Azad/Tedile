@@ -10,6 +10,7 @@ from app.models.provider_service import ProviderService
 from app.models.service import Service
 from app.models.provider import Provider
 from app.models.user import User
+from app.models.review import Review
 from app.routes.customer import login_required
 from app.security import csrf_protect
 from app.services.geo_service import geocode_locality
@@ -156,7 +157,19 @@ def provider_profile(profile_code):
     )
     if not has_active_service:
         return jsonify({"error": "Provider not found"}), 404
-    return jsonify(provider.to_public_dto())
+    payload = provider.to_public_dto()
+    payload["services"] = [
+        service.to_public_dto()
+        for service in Service.query.join(ProviderService, ProviderService.service_id == Service.id)
+        .filter(ProviderService.provider_id == provider.id, ProviderService.is_active.is_(True), Service.is_active.is_(True))
+        .order_by(Service.name.asc()).all()
+    ]
+    payload["recent_reviews"] = [
+        {"rating": review.rating, "comment": review.comment, "created_at": review.created_at.isoformat()}
+        for review in Review.query.filter_by(provider_id=provider.id, reviewer_role="customer")
+        .order_by(Review.created_at.desc()).limit(5).all()
+    ]
+    return jsonify(payload)
 
 @api_bp.route("/providers/<profile_code>/services")
 def provider_services(profile_code):

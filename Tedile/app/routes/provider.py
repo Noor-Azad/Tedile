@@ -11,8 +11,10 @@ from app.models.provider import Provider
 from app.models.service import Service
 from app.models.user import User
 from app.models.review import Review
+from app.models.notification import Notification
 from app.routes.customer import login_required
 from app.security import csrf_protect
+from app.services.notification_service import notify_once
 
 provider_bp = Blueprint("provider", __name__, url_prefix="/provider")
 
@@ -43,6 +45,7 @@ def provider_dashboard():
         user=user,
         provider=provider.to_provider_owner_dto() if provider else None,
         bookings=booking_dtos,
+        notifications=Notification.query.filter_by(user_id=user["id"]).order_by(Notification.created_at.desc()).limit(10).all(),
     )
 
 
@@ -84,8 +87,12 @@ def update_booking_status(booking_reference):
 
     status = request.form.get("status")
     allowed_transitions = {
-        "pending": {"confirmed", "cancelled"},
-        "confirmed": {"completed"},
+        "pending": {"confirmed", "rejected", "cancelled"},
+        "confirmed": {"on_the_way", "completed"},
+        "on_the_way": {"arrived"},
+        "arrived": {"in_progress"},
+        "in_progress": {"completed"},
+        "rejected": set(),
         "cancelled": set(),
         "completed": set(),
     }
@@ -95,6 +102,20 @@ def update_booking_status(booking_reference):
         }), 400
 
     booking.status = status
+    customer = User.query.get(booking.customer_id)
+    if customer:
+        messages = {
+            "confirmed": f"Your booking has been accepted by {provider.name}.",
+            "rejected": f"Your booking was rejected by {provider.name}.",
+            "on_the_way": f"{provider.name} is on the way.",
+            "arrived": f"{provider.name} has arrived.",
+            "in_progress": "Your service has started.",
+            "completed": "Your service has been completed.",
+            "cancelled": "Your booking has been cancelled.",
+        }
+        message = messages.get(status)
+        if message:
+            notify_once(customer.id, f"booking:{booking.id}:{status}", message, booking.id)
     db.session.commit()
     return redirect(url_for("provider.provider_dashboard"))
 

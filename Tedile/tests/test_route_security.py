@@ -8,6 +8,7 @@ from app.models.provider_service import ProviderService
 from app.models.service import Service
 from app.models.user import User
 from app.models.review import Review
+from app.models.notification import Notification
 from tests.conftest import create_isolated_test_app
 
 
@@ -115,6 +116,12 @@ def test_customer_dashboard_contains_location_provider_search_form(app, client):
     assert b'id="hero-keyword"' in page.data
     assert b'id="hero-status"' in page.data
     assert b'id="use-current-location"' in page.data
+    assert b"Welcome, Customer" in page.data
+    assert b"Open profile menu" in page.data
+    assert b"My Bookings" in page.data
+    assert b"My Account" in page.data
+    assert b"Address not provided" in page.data
+    assert b"Logout" in page.data
     script = client.get("/static/customer.js").data
     assert b"navigator.geolocation.getCurrentPosition" in script
     assert b"Location access was denied." in script
@@ -574,7 +581,12 @@ def test_provider_cannot_access_or_modify_another_providers_resources(app, clien
     [
         ("pending", "confirmed", 302),
         ("pending", "cancelled", 302),
+        ("pending", "rejected", 302),
         ("confirmed", "completed", 302),
+        ("confirmed", "on_the_way", 302),
+        ("on_the_way", "arrived", 302),
+        ("arrived", "in_progress", 302),
+        ("in_progress", "completed", 302),
         ("confirmed", "cancelled", 400),
         ("confirmed", "pending", 400),
         ("cancelled", "confirmed", 400),
@@ -627,8 +639,8 @@ def test_provider_dashboard_only_shows_current_booking_actions_and_cancel_confir
     assert b"addEventListener('submit'" in script.data
     assert b"form.elements.status.value === 'cancelled'" in script.data
     assert b"window.confirm('Are you sure you want to cancel this booking?')" in script.data
-    assert page.data.count(b"Complete") == 1
-    assert page.data.count(b"Confirm") == 1
+    assert page.data.count(b">Complete</option>") == 1
+    assert page.data.count(b">Confirm</option>") == 1
 
 
 def test_provider_dashboard_handles_availability_update_without_raw_json(app, client):
@@ -927,3 +939,24 @@ def test_provider_cannot_update_another_providers_booking(app, client):
     assert response.status_code == 302
     with app.app_context():
         assert db.session.get(Booking, booking.id).status == "pending"
+
+
+def test_notifications_are_private_readable_and_markable(app, client):
+    owner = user("notification-owner@example.com", "customer")
+    other = user("notification-other@example.com", "customer")
+    with app.app_context():
+        own = Notification(user_id=owner.id, event_key="test:owner", message="Your booking is accepted.")
+        foreign = Notification(user_id=other.id, event_key="test:other", message="Private update.")
+        db.session.add_all([own, foreign])
+        db.session.commit()
+        own_id = own.id
+        foreign_id = foreign.id
+    token = set_session(client, owner)
+
+    response = client.get("/notifications")
+    assert response.status_code == 200
+    assert response.get_json()["data"] == [own.to_dict()]
+    assert client.post(f"/notifications/{foreign_id}/read", data={"csrf_token": token}).status_code == 404
+    assert client.post(f"/notifications/{own_id}/read", data={"csrf_token": token}).status_code == 200
+    with app.app_context():
+        assert db.session.get(Notification, own_id).is_read is True

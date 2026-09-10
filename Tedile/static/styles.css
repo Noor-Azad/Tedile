@@ -19,11 +19,31 @@ button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(232, 117, 92, .45); outline-offset: 3px; }
 
-.site-header { max-width: 1240px; margin: 0 auto; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.site-header { max-width: 1240px; margin: 0 auto; padding: max(22px, env(safe-area-inset-top)) 24px 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .wordmark { font-size: 1.5rem; font-weight: 800; letter-spacing: -.04em; color: var(--brand-dark); }
 .header-actions { display: flex; align-items: center; gap: 20px; color: var(--muted); font-size: .9rem; }
 .header-actions a:hover { color: var(--brand-dark); }
 .account-name { color: var(--ink); font-weight: 700; }
+.profile-menu { position: relative; z-index: 5; }
+.profile-menu summary { list-style: none; }
+.profile-menu summary::-webkit-details-marker { display: none; }
+.profile-trigger { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 4px 8px 4px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; box-shadow: 0 5px 15px rgba(25,54,44,.05); }
+.profile-trigger-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .84rem; font-weight: 800; }
+.menu-icon { color: var(--brand); font-size: 1.15rem; line-height: 1; }
+.profile-avatar { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; }
+.profile-avatar-fallback { background: var(--mint); color: var(--brand-dark); font-weight: 800; }
+.profile-popover { position: absolute; top: calc(100% + 10px); right: 0; width: min(310px, calc(100vw - 28px)); padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.profile-menu-identity { display: flex; align-items: center; gap: 11px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.profile-avatar-large { width: 48px; height: 48px; flex-basis: 48px; }
+.profile-menu-identity div, .profile-menu-address { display: grid; gap: 3px; }
+.profile-menu-identity span, .profile-menu-address { color: var(--muted); font-size: .78rem; }
+.profile-menu-address { margin: 14px 0; line-height: 1.4; }
+.profile-menu-address span { color: var(--ink); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.profile-menu-links { display: grid; gap: 2px; border-top: 1px solid var(--line); padding-top: 8px; }
+.profile-menu-links a, .profile-menu-logout { display: block; width: 100%; padding: 10px 4px; border: 0; background: transparent; color: var(--ink); text-align: left; font-weight: 750; cursor: pointer; }
+.profile-menu-links a:hover, .profile-menu-logout:hover { color: var(--brand); }
+.profile-menu form { border-top: 1px solid var(--line); margin-top: 7px; padding-top: 7px; }
+.profile-menu-logout { color: var(--coral); }
 
 .hero-shell { max-width: 1240px; margin: 30px auto 0; padding: 68px 7%; background: var(--brand-dark); color: white; border-radius: 28px; position: relative; overflow: hidden; }
 .hero-shell::after { content: ""; position: absolute; width: 330px; height: 330px; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; right: -80px; top: -120px; box-shadow: 0 0 0 42px rgba(255,255,255,.03), 0 0 0 84px rgba(255,255,255,.02); }
@@ -123,3 +143,8 @@ h3 { letter-spacing: -.025em; }
 .customer-marker { fill: var(--coral); stroke: white; stroke-width: 5; }
 .map-label { fill: var(--ink); font-size: 24px; font-weight: 800; paint-order: stroke; stroke: white; stroke-width: 8px; stroke-linejoin: round; }
 .map-fallback { padding: 30px; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .site-header { padding: max(16px, env(safe-area-inset-top)) 18px 16px; }
+  .profile-trigger-name { max-width: 100px; }
+}

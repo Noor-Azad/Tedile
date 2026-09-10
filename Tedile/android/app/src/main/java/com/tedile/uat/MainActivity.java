@@ -3,6 +3,7 @@ package com.tedile.uat;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -19,6 +20,7 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
 
     private static final String UAT_URL = "https://tedile-uat.onrender.com";
+    private static final String DEBUG_URL = "http://10.0.2.2:5001";
     private static final int PERMISSIONS = 42;
     private static final int FILE_CHOOSER = 43;
 
@@ -216,12 +218,14 @@ public class MainActivity extends Activity {
             );
         }
 
+        boolean isDebuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        String startUrl = isDebuggable ? DEBUG_URL : UAT_URL;
         Log.d(
                 "TedileWebView",
-                "webView.loadUrl: " + UAT_URL
+                "webView.loadUrl: " + startUrl
         );
 
-        webView.loadUrl(UAT_URL);
+        webView.loadUrl(startUrl);
     }
 
     private String permissionForMedia() {

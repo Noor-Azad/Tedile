@@ -10,10 +10,24 @@
   <body class="marketplace-page">
     <header class="site-header">
       <a class="wordmark" href="{{ url_for('auth.login_page') }}">Tedile</a>
-      <div class="header-actions"><span class="account-name">{{ user.name }}</span><a class="button button-quiet" href="{{ url_for('auth.profile_page') }}">My Profile</a><form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="button button-quiet" type="submit">Log out</button></form></div>
+      <details class="profile-menu">
+        <summary class="profile-trigger" aria-label="Open profile menu">
+          {% if user.profile_image_url is defined and user.profile_image_url %}<img class="profile-avatar" src="{{ user.profile_image_url }}" alt="" />{% else %}<span class="profile-avatar profile-avatar-fallback" aria-hidden="true">{{ (user.name or user.email or 'C')[:1]|upper }}</span>{% endif %}
+          <span class="profile-trigger-name">{{ user.name or user.email }}</span><span class="menu-icon" aria-hidden="true">☰</span>
+        </summary>
+        <div class="profile-popover">
+          <div class="profile-menu-identity">
+            {% if user.profile_image_url is defined and user.profile_image_url %}<img class="profile-avatar profile-avatar-large" src="{{ user.profile_image_url }}" alt="" />{% else %}<span class="profile-avatar profile-avatar-fallback profile-avatar-large" aria-hidden="true">{{ (user.name or user.email or 'C')[:1]|upper }}</span>{% endif %}
+            <div><strong>{{ user.name or user.email }}</strong><span>{{ user.email }}</span></div>
+          </div>
+          <p class="profile-menu-address"><span>Address</span>{{ user.address|default('Address not provided', true) }}</p>
+          <nav class="profile-menu-links" aria-label="Account menu"><a href="#booking-section">My Bookings</a><a href="{{ url_for('auth.profile_page') }}">My Account</a></nav>
+          <form method="POST" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><button class="profile-menu-logout" type="submit">Logout</button></form>
+        </div>
+      </details>
     </header>
     <main class="dashboard-shell">
-      <section class="dashboard-intro"><p class="eyebrow">YOUR TEDILE</p><h1>Bookings, without the back-and-forth.</h1><p>Keep an eye on every request and the people helping you get it done.</p><a class="button button-primary" href="#services">Find another service</a></section>
+      <section class="dashboard-intro"><p class="eyebrow">YOUR TEDILE</p><h1>Welcome, {{ user.name or user.email }} 👋</h1><p>Keep an eye on every request and the people helping you get it done.</p><a class="button button-primary" href="#services">Find another service</a></section>
       <section class="hero-shell" aria-labelledby="provider-search-title">
         <div class="hero-copy">
           <p class="eyebrow">LOCAL HELP, CLOSER TO HOME</p>
@@ -27,6 +41,7 @@
         </div>
       </section>
       <section class="content-section" id="services"><div class="section-heading"><div><p class="eyebrow">SERVICES</p><h2>Find help for your next task</h2><p>Browse the services currently available through Tedile.</p></div></div><div class="service-rail" id="popular-services" aria-label="Popular services" tabindex="0"></div><div class="service-groups" id="service-groups"></div></section>
+      <section class="content-section notifications-section" id="notifications"><div class="section-heading"><div><p class="eyebrow">UPDATES</p><h2>Notifications{% if notifications|selectattr('is_read', 'equalto', false)|list|length %} ({{ notifications|selectattr('is_read', 'equalto', false)|list|length }}){% endif %}</h2></div></div><div class="notification-list">{% for notification in notifications %}<article class="notification-item{% if not notification.is_read %} is-unread{% endif %}"><span aria-hidden="true">{{ '●' if not notification.is_read else '○' }}</span><p>{{ notification.message }}</p><time datetime="{{ notification.created_at.isoformat() }}">{{ notification.created_at.strftime('%d %b %Y, %H:%M') }}</time></article>{% else %}<p class="empty-state">No notifications yet.</p>{% endfor %}</div></section>
       <section class="results-section" id="results">
   <div class="section-heading results-heading">
     <div>
@@ -47,7 +62,7 @@
   <button class="button button-secondary" id="load-more" type="button" hidden>Load more</button>
 </section>
 
-<section class="booking-section"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Upcoming and past bookings</h2></div></div><div class="booking-grid" id="booking-grid">
+<section class="booking-section" id="booking-section"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Upcoming and past bookings</h2></div></div><div class="booking-grid" id="booking-grid">
         {% for booking in bookings %}<article class="booking-card"><div class="booking-card-top"><span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span><span class="booking-reference">{{ booking.reference }}</span></div><h3>{{ booking.provider.name }}</h3><p>{{ booking.service.name }}</p>{% if booking.scheduled_at %}<p class="booking-time">{{ booking.scheduled_at }}</p>{% endif %}{% if booking.notes %}<p class="booking-notes">{{ booking.notes }}</p>{% endif %}{% if booking.status in ('pending', 'confirmed') %}<button class="button button-secondary cancel-booking" type="button" data-cancel-url="{{ url_for('customer.cancel_booking', booking_reference=booking.reference) }}">Cancel Booking</button><p class="form-status booking-error" role="alert" hidden></p>{% endif %}{% if booking.status == 'completed' %}{% if booking.review %}<p>Your rating: {{ booking.review.rating }}/5{% if booking.review.comment %} — {{ booking.review.comment }}</p>{% else %}</p>{% endif %}{% else %}<form class="review-form" method="POST" action="{{ url_for('customer.review_booking', booking_reference=booking.reference) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><label>Rate provider <select name="rating" required><option value="">Stars</option>{% for star in range(1, 6) %}<option value="{{ star }}">{{ star }}</option>{% endfor %}</select></label><label>Review (optional)<textarea name="comment" maxlength="2000"></textarea></label><button class="button button-secondary" type="submit">Submit rating</button></form>{% endif %}{% endif %}</article>{% else %}<div class="empty-state"><span class="empty-mark">+</span><h3>Your next useful connection starts here.</h3><p>Browse services and send your first request when you’re ready.</p><a class="button button-secondary" href="#services">Browse services</a></div>{% endfor %}
       </div></section>
     </main>

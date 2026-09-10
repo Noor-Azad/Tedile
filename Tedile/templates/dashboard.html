@@ -93,6 +93,7 @@
         </section>
 
         <section class="content-section booking-section">
+          <section class="content-section notifications-section" id="notifications"><div class="section-heading"><div><p class="eyebrow">UPDATES</p><h2>Notifications{% if notifications|selectattr('is_read', 'equalto', false)|list|length %} ({{ notifications|selectattr('is_read', 'equalto', false)|list|length }}){% endif %}</h2></div></div><div class="notification-list">{% for notification in notifications %}<article class="notification-item{% if not notification.is_read %} is-unread{% endif %}"><span aria-hidden="true">{{ '●' if not notification.is_read else '○' }}</span><p>{{ notification.message }}</p><time datetime="{{ notification.created_at.isoformat() }}">{{ notification.created_at.strftime('%d %b %Y, %H:%M') }}</time></article>{% else %}<p class="empty-state">No notifications yet.</p>{% endfor %}</div></section>
           <div class="section-heading">
             <div>
               <p class="eyebrow">BOOKING REQUESTS</p>
@@ -103,9 +104,9 @@
 
           <div class="booking-grid">
             {% for booking in bookings %}
-            <article class="booking-card">
+            <article class="booking-card" data-booking-reference="{{ booking.reference }}" data-booking-status="{{ booking.status }}">
               <div class="booking-card-top">
-                <span class="status-pill status-{{ booking.status }}">{{ booking.status }}</span>
+                <span class="status-pill status-{{ booking.status }}" data-booking-status-pill>{{ booking.status|replace('_', ' ')|title }}</span>
                 <span class="booking-reference">{{ booking.reference }}</span>
               </div>
 
@@ -127,15 +128,23 @@
                 {% else %}<form class="review-form" method="POST" action="{{ url_for('provider.review_booking', booking_reference=booking.reference) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /><label>Rate customer <select name="rating" required><option value="">Stars</option>{% for star in range(1, 6) %}<option value="{{ star }}">{{ star }}</option>{% endfor %}</select></label><label>Review (optional)<textarea name="comment" maxlength="2000"></textarea></label><button class="button button-secondary" type="submit">Submit rating</button></form>{% endif %}
               {% endif %}
 
-              {% if booking.status in ('pending', 'confirmed') %}
+              {% if booking.status in ('pending', 'confirmed', 'on_the_way', 'arrived', 'in_progress') %}
               <form class="booking-status-form" method="POST" action="{{ url_for('provider.update_booking_status', booking_reference=booking.reference) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <select name="status">
                   {% if booking.status == 'pending' %}
                   <option value="confirmed">Confirm</option>
+                  <option value="rejected">Reject</option>
                   <option value="cancelled">Cancel</option>
                   {% elif booking.status == 'confirmed' %}
+                  <option value="on_the_way">Start Trip</option>
                   <option value="completed">Complete</option>
+                  {% elif booking.status == 'on_the_way' %}
+                  <option value="arrived">I've Arrived</option>
+                  {% elif booking.status == 'arrived' %}
+                  <option value="in_progress">Start Service</option>
+                  {% elif booking.status == 'in_progress' %}
+                  <option value="completed">Complete Service</option>
                   {% endif %}
                 </select>
                 <button class="button button-primary" type="submit">Update booking</button>
