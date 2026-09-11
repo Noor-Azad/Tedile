@@ -1,5 +1,7 @@
 import pytest
 import json
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.extensions import db
 from app.models.booking import Booking
@@ -356,11 +358,28 @@ def test_booking_rejects_malformed_datetime_and_oversized_notes(app, client):
             "csrf_token": token,
             "provider_profile_code": profile_code,
             "service_slug": service_slug,
-            "scheduled_at": "2026-08-20T10:30:00",
+            "scheduled_at": (datetime.now(ZoneInfo("Asia/Kolkata")) + timedelta(days=1)).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M:%S"),
             "notes": "Please call first",
         },
     )
     assert valid.status_code == 201
+
+
+def test_booking_rejects_past_local_ist_datetime(app, client):
+    with app.app_context():
+        customer = user("past-date-customer@example.com", "customer")
+        record = provider("PAST-DATE-PROVIDER")
+        service = service_for(record)
+    token = set_session(client, customer)
+    past = (datetime.now(ZoneInfo("Asia/Kolkata")) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    response = client.post("/customer/bookings", data={
+        "csrf_token": token,
+        "provider_profile_code": record.profile_code,
+        "service_slug": service.slug,
+        "scheduled_at": past,
+    })
+    assert response.status_code == 400
+    assert b"today or in the future" in response.data
 
 
 def _booking_setup(app):

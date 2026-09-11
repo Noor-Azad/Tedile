@@ -165,6 +165,20 @@ async function loadProfile() {
     const services = (provider.services || []).map(service => `<li>${escapeHtml(service.name)}</li>`).join('');
     const reviews = (provider.recent_reviews || []).map(review => `<li>★ ${escapeHtml(review.rating)}${review.comment ? ` — ${escapeHtml(review.comment)}` : ''}</li>`).join('');
     target.innerHTML = `<div class="profile-card"><div class="profile-visual">${photo}</div><div class="profile-content"><p class="eyebrow">LOCAL PROFESSIONAL</p><h1>${escapeHtml(provider.name)} ${provider.verified ? '<span class="verified-mark">✓</span>' : ''}</h1><p class="provider-location">${escapeHtml([provider.city, provider.state].filter(Boolean).join(', '))}</p><div class="profile-stats"><span>★ ${escapeHtml(provider.rating || '—')} · ${escapeHtml(provider.reviews_count || 0)} reviews</span><span>${escapeHtml(provider.experience_years || 0)} years experience</span><span>${escapeHtml(provider.jobs_completed || 0)} jobs completed</span></div><div class="profile-rate">${provider.hourly_rate != null ? `₹${escapeHtml(provider.hourly_rate)} / hour` : 'Rate on request'}</div><button class="button button-primary" type="button" id="start-booking">Request this provider</button><p class="profile-note">Contact details are shared only after an authorized booking is confirmed.</p></div></div><div class="booking-panel" id="booking-panel" hidden><p class="eyebrow">BOOK A VISIT</p><h2>Tell us when you need help.</h2><form id="booking-form"><label>Date and time<input type="datetime-local" name="scheduled_at" required /></label><label>Notes<textarea name="notes" rows="4" placeholder="Add helpful details about the job"></textarea></label><input type="hidden" name="provider_profile_code" value="${escapeHtml(provider.id)}" /><label>Service<select name="service_slug" id="booking-service" required><option value="">Loading services…</option></select></label><fieldset class="booking-location"><legend>Service location</legend><button class="button button-quiet" type="button" id="use-booking-current-location">Use my current location</button><button class="button button-quiet" type="button" id="use-booking-search-location">Use selected search location</button><p class="form-status" id="booking-location-status"></p></fieldset><button class="button button-primary" type="submit">Send booking request</button><p class="form-status" id="booking-status"></p></form></div>`;
+    const bookingDate = document.querySelector('#booking-form input[name="scheduled_at"]');
+    if (bookingDate) {
+      const now = new Date();
+      now.setSeconds(0, 0);
+      const localValue = (date) => {
+        const pad = (value) => String(value).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+      bookingDate.min = localValue(now);
+      if (!bookingDate.value || bookingDate.value < bookingDate.min) {
+        now.setMinutes(now.getMinutes() + 30);
+        bookingDate.value = localValue(now);
+      }
+    }
     const profileContent = target.querySelector('.profile-content');
     if (profileContent) {
       profileContent.insertAdjacentHTML('beforeend', `${services ? `<section><h2>Services</h2><ul>${services}</ul></section>` : ''}${reviews ? `<section><h2>Recent reviews</h2><ul>${reviews}</ul></section>` : ''}`);

@@ -1,5 +1,6 @@
 from functools import wraps
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
 import math
 from urllib.error import HTTPError, URLError
@@ -19,6 +20,7 @@ from app.services.notification_service import notify_once
 from app.security import csrf_protect
 
 customer_bp = Blueprint("customer", __name__, url_prefix="/customer")
+LOCAL_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 def _customer_booking_access(view_fn):
@@ -168,6 +170,10 @@ def create_booking():
         scheduled_at = datetime.fromisoformat(scheduled_at_value) if scheduled_at_value else None
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid scheduled_at"}), 400
+    if scheduled_at and scheduled_at.tzinfo:
+        scheduled_at = scheduled_at.astimezone(LOCAL_TIMEZONE).replace(tzinfo=None)
+    if scheduled_at and scheduled_at < datetime.now(LOCAL_TIMEZONE).replace(tzinfo=None):
+        return jsonify({"error": "Booking date must be today or in the future."}), 400
 
     provider = Provider.query.filter_by(profile_code=profile_code).first()
     if not provider or not provider.is_active:
