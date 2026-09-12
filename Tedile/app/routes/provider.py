@@ -14,7 +14,7 @@ from app.models.review import Review
 from app.models.notification import Notification
 from app.routes.customer import login_required
 from app.security import csrf_protect
-from app.services.notification_service import notify_once
+from app.services.notification_service import mark_booking_request_read, notify_once
 
 provider_bp = Blueprint("provider", __name__, url_prefix="/provider")
 
@@ -103,6 +103,8 @@ def update_booking_status(booking_reference):
 
     booking.status = status
     customer = User.query.get(booking.customer_id)
+    if status == "cancelled" and provider.user_id:
+        mark_booking_request_read(booking.id, provider.user_id)
     if customer:
         messages = {
             "confirmed": f"Your booking has been accepted by {provider.name}.",

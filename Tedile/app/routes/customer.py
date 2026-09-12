@@ -16,7 +16,7 @@ from app.models.service import Service
 from app.models.provider_service import ProviderService
 from app.models.review import Review
 from app.models.notification import Notification
-from app.services.notification_service import notify_once
+from app.services.notification_service import mark_booking_request_read, notify_once
 from app.security import csrf_protect
 
 customer_bp = Blueprint("customer", __name__, url_prefix="/customer")
@@ -250,6 +250,7 @@ def cancel_booking(booking_reference=None, booking_id=None):
     booking.status = "cancelled"
     provider = Provider.query.get(booking.provider_id)
     if provider and provider.user_id:
+        mark_booking_request_read(booking.id, provider.user_id)
         notify_once(
             provider.user_id,
             f"booking:{booking.id}:cancelled",

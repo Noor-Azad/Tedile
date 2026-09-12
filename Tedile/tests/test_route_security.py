@@ -406,6 +406,88 @@ def _create_booking(client, customer, profile_code, service_slug, token):
     )
 
 
+def test_booking_creation_creates_unread_provider_request_notification(app, client):
+    customer = user("notification-create-customer@example.com", "customer")
+    provider_user = user("notification-create-provider@example.com", "provider")
+    record = provider("NOTIFICATION-CREATE-PROVIDER", user_id=provider_user.id)
+    service = service_for(record)
+    token = set_session(client, customer)
+
+    response = _create_booking(client, customer, record.profile_code, service.slug, token)
+
+    assert response.status_code == 201
+    with app.app_context():
+        booking = Booking.query.order_by(Booking.id.desc()).first()
+        notification = Notification.query.filter_by(
+            booking_id=booking.id,
+            event_key=f"booking:{booking.id}:requested",
+        ).one()
+        assert notification.user_id == provider_user.id
+        assert notification.is_read is False
+
+
+def test_customer_cancellation_reads_request_and_keeps_unread_cancellation(app, client):
+    customer, record, service, _ = _booking_setup(app)
+    with app.app_context():
+        provider_user = user("customer-cancel-provider@example.com", "provider")
+        db.session.get(Provider, record.id).user_id = provider_user.id
+        db.session.commit()
+    token = set_session(client, customer)
+    response = _create_booking(client, customer, record.profile_code, service.slug, token)
+    assert response.status_code == 201
+    reference = response.get_json()["reference"]
+
+    response = client.post(f"/customer/bookings/{reference}/cancel", data={"csrf_token": token})
+
+    assert response.status_code == 200
+    with app.app_context():
+        booking = Booking.query.order_by(Booking.id.desc()).first()
+        notifications = Notification.query.filter_by(booking_id=booking.id).order_by(Notification.id).all()
+        assert booking.status == "cancelled"
+        assert len(notifications) == 2
+        assert notifications[0].event_key == f"booking:{booking.id}:requested"
+        assert notifications[0].is_read is True
+        assert notifications[1].event_key == f"booking:{booking.id}:cancelled"
+        assert notifications[1].is_read is False
+        assert Notification.query.filter_by(user_id=provider_user.id, is_read=False).count() == 1
+
+
+def test_provider_cancellation_reads_request_and_keeps_unread_cancellation(app, client):
+    provider_user = user("provider-cancel-provider@example.com", "provider")
+    record = provider("PROVIDER-CANCEL-NOTIFICATION", user_id=provider_user.id)
+    service = service_for(record)
+    customer = user("provider-cancel-customer@example.com", "customer")
+    with app.app_context():
+        booking = Booking(customer_id=customer.id, provider_id=record.id, service_id=service.id, status="pending")
+        db.session.add(booking)
+        db.session.flush()
+        request_notification = Notification(
+            user_id=provider_user.id,
+            booking_id=booking.id,
+            event_key=f"booking:{booking.id}:requested",
+            message="New booking request from Customer.",
+        )
+        db.session.add(request_notification)
+        db.session.commit()
+        reference = booking.public_reference
+        booking_id = booking.id
+    token = set_session(client, provider_user)
+
+    response = client.post(
+        f"/provider/bookings/{reference}/status",
+        data={"csrf_token": token, "status": "cancelled"},
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        booking = db.session.get(Booking, booking_id)
+        notifications = Notification.query.filter_by(booking_id=booking_id).order_by(Notification.id).all()
+        assert booking.status == "cancelled"
+        assert notifications[0].is_read is True
+        assert notifications[1].event_key == f"booking:{booking_id}:cancelled"
+        assert notifications[1].is_read is False
+
+
 def test_booking_requires_all_related_records_to_be_active(app, client):
     customer, record, service, relation = _booking_setup(app)
     token = set_session(client, customer)
