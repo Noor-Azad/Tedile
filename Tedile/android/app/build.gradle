@@ -1,5 +1,16 @@
 plugins { id 'com.android.application' }
 
+def tedileDevUrl = providers.gradleProperty('tedileDevUrl').orElse('http://10.0.2.2:5001').get()
+def tedileDevUrlLiteral = tedileDevUrl.replace('\\', '\\\\').replace('"', '\\"')
+
 android { namespace 'com.tedile.uat'; compileSdk 35
-    defaultConfig { applicationId 'com.tedile.uat'; minSdk 23; targetSdk 35; versionCode 1; versionName '1.0' }
+    buildFeatures { buildConfig true }
+    defaultConfig {
+        applicationId 'com.tedile.uat'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'DEBUG_BASE_URL', '"' + tedileDevUrlLiteral + '"'
+    }
 }
