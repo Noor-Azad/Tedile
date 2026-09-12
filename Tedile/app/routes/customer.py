@@ -172,13 +172,14 @@ def create_booking():
         return jsonify({"error": "Invalid scheduled_at"}), 400
     if scheduled_at and scheduled_at.tzinfo:
         scheduled_at = scheduled_at.astimezone(LOCAL_TIMEZONE).replace(tzinfo=None)
-    if scheduled_at and scheduled_at < datetime.now(LOCAL_TIMEZONE).replace(tzinfo=None):
+    now_local = datetime.now(LOCAL_TIMEZONE).replace(tzinfo=None)
+    if scheduled_at and scheduled_at <= now_local:
         return jsonify({"error": "Booking date must be today or in the future."}), 400
 
     provider = Provider.query.filter_by(profile_code=profile_code).first()
     if not provider or not provider.is_active:
         return jsonify({"error": "Provider not found"}), 404
-    if provider.availability == "busy":
+    if provider.availability == "busy" and not scheduled_at:
         return jsonify({"error": "This provider is currently busy and cannot accept new bookings."}), 409
     if provider.availability == "offline":
         return jsonify({"error": "This provider is currently offline and cannot accept new bookings."}), 409

@@ -544,6 +544,78 @@ def test_booking_rejects_unavailable_provider_without_creating_booking(app, clie
         assert Booking.query.count() == before
 
 
+def test_busy_provider_rejects_immediate_booking_without_creating_booking(app, client):
+    customer, record, service, _ = _booking_setup(app)
+    with app.app_context():
+        db.session.get(Provider, record.id).availability = "busy"
+        db.session.commit()
+        before = Booking.query.count()
+    token = set_session(client, customer)
+    response = _create_booking(client, customer, record.profile_code, service.slug, token)
+    assert response.status_code == 409
+    assert response.get_json()["error"] == "This provider is currently busy and cannot accept new bookings."
+    with app.app_context():
+        assert Booking.query.count() == before
+
+
+def test_busy_provider_accepts_future_scheduled_booking(app, client):
+    customer, record, service, _ = _booking_setup(app)
+    with app.app_context():
+        db.session.get(Provider, record.id).availability = "busy"
+        db.session.commit()
+    token = set_session(client, customer)
+    scheduled_at = (datetime.now(ZoneInfo("Asia/Kolkata")) + timedelta(days=1)).replace(second=0, microsecond=0)
+    response = client.post("/customer/bookings", data={
+        "csrf_token": token,
+        "provider_profile_code": record.profile_code,
+        "service_slug": service.slug,
+        "scheduled_at": scheduled_at.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    assert response.status_code == 201
+    with app.app_context():
+        booking = Booking.query.order_by(Booking.id.desc()).first()
+        assert booking.customer_id == customer.id
+        assert booking.provider_id == record.id
+        assert booking.status == "pending"
+
+
+def test_busy_provider_rejects_past_scheduled_booking(app, client):
+    customer, record, service, _ = _booking_setup(app)
+    with app.app_context():
+        db.session.get(Provider, record.id).availability = "busy"
+        db.session.commit()
+    token = set_session(client, customer)
+    past = (datetime.now(ZoneInfo("Asia/Kolkata")) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    response = client.post("/customer/bookings", data={
+        "csrf_token": token,
+        "provider_profile_code": record.profile_code,
+        "service_slug": service.slug,
+        "scheduled_at": past,
+    })
+    assert response.status_code == 400
+    assert b"today or in the future" in response.data
+
+
+def test_offline_provider_rejects_future_scheduled_booking_without_creating_booking(app, client):
+    customer, record, service, _ = _booking_setup(app)
+    with app.app_context():
+        db.session.get(Provider, record.id).availability = "offline"
+        db.session.commit()
+        before = Booking.query.count()
+    token = set_session(client, customer)
+    scheduled_at = (datetime.now(ZoneInfo("Asia/Kolkata")) + timedelta(days=1)).replace(second=0, microsecond=0)
+    response = client.post("/customer/bookings", data={
+        "csrf_token": token,
+        "provider_profile_code": record.profile_code,
+        "service_slug": service.slug,
+        "scheduled_at": scheduled_at.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    assert response.status_code == 409
+    assert response.get_json()["error"] == "This provider is currently offline and cannot accept new bookings."
+    with app.app_context():
+        assert Booking.query.count() == before
+
+
 def test_role_boundaries_reject_wrong_dashboard(app, client):
     with app.app_context():
         customer = user("customer@example.com", "customer")
